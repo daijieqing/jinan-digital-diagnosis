@@ -1,4 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
+import systemSupportBasemap from "./assets/system-support-basemap.png";
+import systemSupportBasemapEmpty from "./assets/system-support-basemap-empty.png";
+import applicationPanoramaDesign from "./assets/application-panorama-design.png";
 
 const units = [
   { id: "city", name: "城市运行管理局", x: 48, y: 47, size: 72, tone: "gold", score: 86 },
@@ -124,112 +127,149 @@ const flowNames = {
   run: {
     blocks: ["运行监测与分析", "综合指挥调度"],
     units: [["城市体征监测", "运行态势研判"], ["事件协同调度", "重点任务督办"]],
-    items: ["城市运行指标采集", "城市生命线监测", "重点区域态势感知", "运行异常智能发现", "综合态势分析研判", "领导驾驶舱服务", "跨部门事件受理", "协同任务派发", "处置过程跟踪", "重点任务建账", "任务进度督导", "办理结果评价"]
+    items: ["城市运行指标采集", "城市生命线监测", "重点区域态势感知", "运行异常智能发现", "综合态势分析研判", "领导驾驶舱服务", "跨部门事件受理", "协同任务派发", "处置过程跟踪", "重点任务建账", "任务进度督导", "办理结果评价", "运行指标校核", "指标异常预警", "专题态势分析", "重大活动保障", "值班信息报送", "指挥资源查询", "事件分级响应", "处置时限预警", "跨层级协同", "督办任务提醒", "办理质效分析", "运行报告生成"]
   },
   govern: {
     blocks: ["城市问题治理", "网格协同监督"],
     units: [["问题主动发现", "闭环处置管理"], ["网格巡查管理", "治理效能监督"]],
-    items: ["视频智能巡查", "城市问题上报", "公众诉求接入", "问题分类研判", "责任单位派遣", "处置结果核查", "网格员任务管理", "巡查轨迹管理", "重点区域巡检", "治理指标监测", "超期事项督办", "治理成效评价"]
+    items: ["视频智能巡查", "城市问题上报", "公众诉求接入", "问题分类研判", "责任单位派遣", "处置结果核查", "网格员任务管理", "巡查轨迹管理", "重点区域巡检", "治理指标监测", "超期事项督办", "治理成效评价", "问题智能去重", "问题趋势分析", "部件台账查询", "处置时限预警", "疑难问题会商", "复发问题治理", "网格事件统计", "网格力量调度", "巡查计划管理", "治理专题分析", "责任履职评价", "整改结果归档"]
   },
   service: {
     blocks: ["公共服务响应", "设施运行保障"],
     units: [["民生诉求响应", "服务资源调度"], ["市政设施监测", "保障任务处置"]],
-    items: ["热线诉求接收", "诉求智能分类", "高频问题分析", "跨部门协同办理", "服务资源查询", "公共资源调度", "道路设施监测", "桥梁运行监测", "照明设施监测", "设施故障告警", "养护任务派发", "保障结果归档"]
+    items: ["热线诉求接收", "诉求智能分类", "高频问题分析", "跨部门协同办理", "服务资源查询", "公共资源调度", "道路设施监测", "桥梁运行监测", "照明设施监测", "设施故障告警", "养护任务派发", "保障结果归档", "诉求情绪识别", "诉求热点分析", "服务事项推荐", "服务资源匹配", "资源预约调度", "跨区域资源协同", "设施台账查询", "设施风险预警", "养护计划管理", "抢修力量调度", "保障过程跟踪", "服务满意度评价"]
   },
   emergency: {
     blocks: ["风险预警研判", "应急联动处置"],
     units: [["风险综合感知", "预警信息管理"], ["应急预案执行", "多部门协同处置"]],
-    items: ["风险信息汇聚", "隐患动态监测", "风险等级评估", "专题风险研判", "预警信息发布", "预警反馈跟踪", "应急事件接报", "预案智能匹配", "应急力量调度", "现场信息回传", "处置过程协同", "事件复盘评估"]
+    items: ["风险信息汇聚", "隐患动态监测", "风险等级评估", "专题风险研判", "预警信息发布", "预警反馈跟踪", "应急事件接报", "预案智能匹配", "应急力量调度", "现场信息回传", "处置过程协同", "事件复盘评估", "风险源台账", "风险趋势分析", "预警规则配置", "预警范围研判", "应急预案查询", "应急资源盘点", "应急队伍调度", "物资装备调拨", "现场态势标绘", "协同指令下达", "舆情信息跟踪", "复盘报告生成"]
   }
 };
 
 function DenseBusinessFlow({ onSelect, onDrill, view }) {
   const [hoverBranch, setHoverBranch] = useState(null);
+  const [activeBranch, setActiveBranch] = useState(null);
+  const focusBranch = hoverBranch || activeBranch;
+  const flowTree = [
+    {
+      id: "run", name: "政务运行与决策",
+      blocks: ["决策支持与科学治理", "综合指挥与协同联动", "财务与资产管理", "人力与组织管理"],
+      units: ["战略规划", "政策研究", "监测评估", "协同办公", "指挥调度", "督办落实", "预算管理", "资产管理"],
+      items: ["政策法规制定", "重大决策评估", "运行监测分析", "指挥协同研判", "督查督办管理", "重点任务跟踪", "预算执行管理", "收支核算管理", "国有资产管理", "采购事项管理", "岗位体系管理", "人员信息管理", "人才培养发展", "绩效考核管理", "组织机构管理", "编制岗位管理"]
+    },
+    {
+      id: "govern", name: "社会治理与民生服务",
+      blocks: ["公共服务与民生保障", "城市运行与应急管理", "社会治理与平安建设", "基层治理与社区服务"],
+      units: ["教育医疗", "就业创业", "社会救助", "公安治安", "信访维稳", "应急指挥", "网格管理", "社区治理"],
+      items: ["教育资源服务", "医疗卫生服务", "就业创业服务", "社会保障服务", "困难群众救助", "公共安全治理", "治安防控管理", "信访事项办理", "矛盾纠纷调处", "应急事件接报", "应急力量调度", "网格事件管理", "网格力量管理", "社区服务管理", "基层事项办理", "群众诉求响应"]
+    },
+    {
+      id: "industry", name: "经济发展与产业赋能",
+      blocks: ["产业发展与招商促进", "市场监管与营商环境", "创新驱动与科技赋能", "开放合作与区域协同"],
+      units: ["企业服务", "项目管理", "知识产权", "质量监管", "市场秩序", "数据服务", "科技创新", "对外合作"],
+      items: ["企业诉求服务", "项目储备管理", "重点项目推进", "招商线索管理", "产业政策兑现", "知识产权保护", "市场主体监管", "质量安全监管", "价格秩序监管", "营商环境评价", "惠企政策服务", "产业数据分析", "科技成果转化", "创新平台管理", "区域协同发展", "对外合作管理"]
+    },
+    {
+      id: "urban", name: "城市建设与生态环境",
+      blocks: ["国土空间与规划管理", "生态环境与绿色发展", "市政设施与公用服务", "交通管理与出行服务"],
+      units: ["国土规划", "生态保护", "污染防治", "能源管理", "市政设施", "交通运行", "停车管理", "城市更新"],
+      items: ["国土空间规划", "建设项目审批", "土地资源管理", "生态环境监测", "污染源监管", "大气污染防治", "水环境治理", "能源消耗管理", "道路设施管理", "桥梁设施管理", "照明设施管理", "公共交通服务", "交通运行监测", "停车资源管理", "城市更新管理", "建设工程监管"]
+    },
+    {
+      id: "support", name: "支撑保障与基础安全",
+      blocks: ["数字基础与数据资源", "网络安全与可信治理", "制度建设与合规管理", "技术支撑与运维保障"],
+      units: ["数据治理", "共享交换", "安全管理", "应急响应", "制度规范", "标准规范", "运维管理", "服务保障"],
+      items: ["数据目录管理", "数据资源归集", "数据质量管理", "数据共享交换", "公共数据开放", "网络安全监测", "安全事件响应", "密码应用管理", "制度规范管理", "标准体系管理", "合规审查管理", "应用运行监控", "基础设施运维", "技术服务管理", "用户服务管理", "运行保障管理"]
+    }
+  ];
   const palettes = {
-    run: { start: "#00F0FF", end: "#0072FF", glow: "rgba(0, 240, 255, 0.25)" },
-    govern: { start: "#00F5D4", end: "#01949A", glow: "rgba(0, 245, 212, 0.2)" },
-    service: { start: "#A855F7", end: "#6366F1", glow: "rgba(168, 85, 247, 0.2)" },
-    emergency: { start: "#FF9F0A", end: "#FF3B30", glow: "rgba(255, 159, 10, 0.25)" }
+    run: { start: "#19F1FF", end: "#078BFF", surface: "#07577A", deep: "#062846", glow: "rgba(21, 224, 255, 0.58)" },
+    govern: { start: "#27A8FF", end: "#425DFF", surface: "#173D84", deep: "#0B214E", glow: "rgba(45, 126, 255, 0.54)" },
+    industry: { start: "#7468FF", end: "#9A46FF", surface: "#352374", deep: "#1E1447", glow: "rgba(126, 77, 255, 0.56)" },
+    urban: { start: "#9B50FF", end: "#C54CFF", surface: "#47216F", deep: "#291344", glow: "rgba(174, 71, 255, 0.56)" },
+    support: { start: "#BB4EFF", end: "#F15EFF", surface: "#55216D", deep: "#30123F", glow: "rgba(217, 78, 255, 0.56)" }
   };
   const colors = Object.fromEntries(Object.entries(palettes).map(([key, value]) => [key, value.start]));
-  const layout = tree.flatMap((line, branchIndex) => {
-    const source = flowNames[line.id];
-    const startY = 35 + branchIndex * 205;
-    const itemRows = source.items.map((name, i) => {
-      const unitGlobal = Math.floor(i / 3), itemIndex = i % 3;
-      const blockIndex = Math.floor(unitGlobal / 2), unitIndex = unitGlobal % 2;
-      return { id: `${line.id}-item-${i}`, name, branch: line.id, blockIndex, unitIndex, x: 930, y: startY + blockIndex * 102 + unitIndex * 46 + itemIndex * 19 + 6 };
-    });
-    const unitRows = source.units.flatMap((pair, blockIndex) => pair.map((name, unitIndex) => ({
-      id: `${line.id}-unit-${blockIndex}-${unitIndex}`, name, branch: line.id, blockIndex, unitIndex,
-      x: 620, y: startY + blockIndex * 102 + unitIndex * 46 + 25
-    })));
-    const blockRows = source.blocks.map((name, blockIndex) => ({ id: `${line.id}-block-${blockIndex}`, name, branch: line.id, blockIndex, x: 360, y: startY + blockIndex * 102 + 48 }));
-    return [{ id: line.id, name: line.name, branch: line.id, type: "mainline", x: 112, y: startY + 96 }, ...blockRows, ...unitRows, ...itemRows];
+  const layout = flowTree.flatMap((line, branchIndex) => {
+    const startY = 78 + branchIndex * 162;
+    const blockRows = line.blocks.map((name, blockIndex) => ({ id: `${line.id}-block-${blockIndex}`, name, branch: line.id, blockIndex, x: 580, y: startY + 8 + blockIndex * 36 }));
+    const unitRows = line.units.map((name, unitIndex) => ({ id: `${line.id}-unit-${unitIndex}`, name, branch: line.id, blockIndex: Math.floor(unitIndex / 2), unitIndex, x: 990, y: startY + 4 + unitIndex * 17 }));
+    const itemRows = line.items.map((name, itemIndex) => ({ id: `${line.id}-item-${itemIndex}`, name, branch: line.id, blockIndex: Math.floor(itemIndex / 4), unitIndex: Math.floor(itemIndex / 2), x: 1353 + itemIndex % 2 * 138, y: startY + 4 + Math.floor(itemIndex / 2) * 17 }));
+    return [{ id: line.id, name: line.name, branch: line.id, type: "mainline", x: 160, y: startY + 62 }, ...blockRows, ...unitRows, ...itemRows];
   });
   const nodeById = Object.fromEntries(layout.map(n => [n.id, n]));
-  const links = tree.flatMap(line => {
-    const source = flowNames[line.id];
+  const links = flowTree.flatMap(line => {
     const result = [];
-    source.blocks.forEach((_, b) => {
+    line.blocks.forEach((_, b) => {
       result.push({ branch: line.id, from: line.id, to: `${line.id}-block-${b}` });
-      source.units[b].forEach((_, u) => {
-        result.push({ branch: line.id, from: `${line.id}-block-${b}`, to: `${line.id}-unit-${b}-${u}` });
-        const base = b * 6 + u * 3;
-        for (let i = 0; i < 3; i++) result.push({ branch: line.id, from: `${line.id}-unit-${b}-${u}`, to: `${line.id}-item-${base + i}` });
-      });
+      for (let u = b * 2; u < b * 2 + 2; u++) result.push({ branch: line.id, from: `${line.id}-block-${b}`, to: `${line.id}-unit-${u}` });
+    });
+    line.units.forEach((_, u) => {
+      result.push({ branch: line.id, itemLink: true, from: `${line.id}-unit-${u}`, to: `${line.id}-item-${u * 2}` });
+      result.push({ branch: line.id, itemLink: true, from: `${line.id}-unit-${u}`, to: `${line.id}-item-${u * 2 + 1}` });
     });
     return result;
   });
+  const halfWidth = node => node.id.includes("-item-") ? 62 : node.id.includes("-unit-") ? 102 : node.id.includes("-block-") ? 118 : 143;
   const curve = link => {
     const a = nodeById[link.from], b = nodeById[link.to];
-    const distance = b.x - a.x;
-    const c1 = a.x + distance * .42;
-    const c2 = a.x + distance * .64;
-    return `M ${a.x} ${a.y} C ${c1} ${a.y}, ${c2} ${b.y}, ${b.x} ${b.y}`;
+    const ax = a.x + halfWidth(a), bx = b.x - halfWidth(b);
+    const distance = bx - ax;
+    const c1 = ax + distance * (link.itemLink ? .22 : .28);
+    const c2 = ax + distance * (link.itemLink ? .78 : .72);
+    const seed = [...link.to].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const direction = Math.abs(b.y - a.y) < 8 ? (seed % 2 ? 1 : -1) : Math.sign(b.y - a.y);
+    const bend = link.itemLink ? 4 : 8;
+    const c1y = a.y + direction * bend;
+    const c2y = b.y - direction * bend;
+    return `M ${ax} ${a.y} C ${c1} ${c1y}, ${c2} ${c2y}, ${bx} ${b.y}`;
   };
   return <div className="dense-flow">
-    <div className="flow-ambient" aria-hidden="true">{tree.map(line => <i key={line.id} className={`ambient-${line.id}`} />)}</div>
-    <div className="flow-legend">{tree.map(line => <span key={line.id} style={{ "--flow-start": palettes[line.id].start, "--flow-end": palettes[line.id].end }}><i />{line.name}</span>)}</div>
-    <div className="flow-world" style={{ transform: `rotateX(${Math.max(6, 30 - view.pitch * .58)}deg) rotateZ(${view.yaw * .18}deg) scale(1.03)` }}>
-    <svg viewBox="0 0 1100 850" preserveAspectRatio="xMidYMid meet" onPointerLeave={() => setHoverBranch(null)}>
+    <div className="flow-ambient" aria-hidden="true">{flowTree.map(line => <i key={line.id} className={`ambient-${line.id}`} />)}</div>
+    <div className="flow-world" style={{ transform: `rotateX(${Math.max(0, 2 - view.pitch * .08)}deg) rotateZ(${view.yaw * .03}deg)` }}>
+    <svg viewBox="0 0 1600 900" preserveAspectRatio="none" onPointerLeave={() => setHoverBranch(null)}>
       <defs>
-        {tree.map(line => <Fragment key={line.id}>
+        {flowTree.map(line => <Fragment key={line.id}>
           <linearGradient id={`branch-${line.id}`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor={palettes[line.id].start} />
             <stop offset="1" stopColor={palettes[line.id].end} />
           </linearGradient>
+          <linearGradient id={`item-link-${line.id}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor={palettes[line.id].end} />
+            <stop offset=".66" stopColor={palettes[line.id].start} />
+            <stop offset="1" stopColor="#FFB65F" />
+          </linearGradient>
           <linearGradient id={`card-${line.id}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#10264A" stopOpacity=".66" />
-            <stop offset=".58" stopColor="#0A1932" stopOpacity=".5" />
-            <stop offset="1" stopColor={palettes[line.id].end} stopOpacity=".12" />
+            <stop offset="0" stopColor={palettes[line.id].surface} stopOpacity="1" />
+            <stop offset=".62" stopColor={palettes[line.id].deep} stopOpacity=".98" />
+            <stop offset="1" stopColor={palettes[line.id].end} stopOpacity=".72" />
           </linearGradient>
         </Fragment>)}
         <linearGradient id="card-sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffffff" stopOpacity=".1" /><stop offset=".5" stopColor="#ffffff" stopOpacity=".015" /><stop offset="1" stopColor="#000814" stopOpacity=".08" /></linearGradient>
       </defs>
-      <g className="flow-links">{links.map((link, i) => <path key={i} d={curve(link)} stroke={`url(#branch-${link.branch})`} className={hoverBranch && hoverBranch !== link.branch ? "muted" : hoverBranch === link.branch ? "active" : ""} />)}</g>
+      <g className="flow-links">{links.map((link, i) => <Fragment key={i}><path d={curve(link)} stroke={`url(#${link.itemLink ? "item-link" : "branch"}-${link.branch})`} className={`${link.itemLink ? "item-link" : "level-link"} ${focusBranch && focusBranch !== link.branch ? "muted" : focusBranch === link.branch ? "active" : ""}`} /><path d={curve(link)} stroke={`url(#${link.itemLink ? "item-link" : "branch"}-${link.branch})`} className={`flow-link-pulse ${focusBranch && focusBranch !== link.branch ? "muted" : focusBranch === link.branch ? "active" : ""}`} /></Fragment>)}</g>
       <g className="flow-nodes">{layout.map(node => {
         const isItem = node.id.includes("-item-"), isUnit = node.id.includes("-unit-"), isBlock = node.id.includes("-block-");
-        const muted = hoverBranch && hoverBranch !== node.branch;
-        const cardWidth = isItem ? 202 : isUnit ? 184 : isBlock ? 190 : 184;
-        const cardHeight = isItem ? 18 : isUnit ? 32 : isBlock ? 36 : 44;
-        return <g key={node.id} className={`${isItem ? "flow-item" : isUnit ? "flow-unit" : isBlock ? "flow-block" : "flow-mainline"} ${muted ? "muted" : ""}`} style={{ "--card-color": colors[node.branch], "--card-glow": palettes[node.branch].glow }} transform={`translate(${node.x} ${node.y})`} onPointerEnter={() => setHoverBranch(node.branch)} onClick={() => {
-          const payload = { type: isItem ? "business" : node.type || "business", name: node.name, line: tree.find(t => t.id === node.branch)?.name };
+        const muted = focusBranch && focusBranch !== node.branch;
+        const cardWidth = isItem ? 124 : isUnit ? 204 : isBlock ? 236 : 286;
+        const cardHeight = isItem ? 12 : isUnit ? 15 : isBlock ? 30 : 116;
+        const cardColor = isItem ? "#FFB65F" : colors[node.branch];
+        return <g key={node.id} className={`${isItem ? "flow-item" : isUnit ? "flow-unit" : isBlock ? "flow-block" : "flow-mainline"} ${muted ? "muted" : ""}`} style={{ "--card-color": cardColor, "--card-glow": isItem ? "rgba(255,182,95,.34)" : palettes[node.branch].glow }} transform={`translate(${node.x} ${node.y})`} onPointerEnter={() => setHoverBranch(node.branch)} onClick={() => {
+          setActiveBranch(node.branch);
+          const payload = { type: isItem ? "business" : node.type || "business", name: node.name, line: flowTree.find(t => t.id === node.branch)?.name };
           if (isItem) onDrill({ ...payload, axis: "vertical" }); else onSelect(payload);
         }}>
           {!isItem && <rect className="flow-card-shadow" x={-cardWidth / 2 + 3} y={-cardHeight / 2 + 5} width={cardWidth} height={cardHeight} rx="4" fill={colors[node.branch]} />}
-          <rect className="flow-card-face" x={-cardWidth / 2} y={-cardHeight / 2} width={cardWidth} height={cardHeight} rx={isItem ? "2" : "4"} fill={isItem ? "rgba(255,255,255,.03)" : `url(#card-${node.branch})`} stroke={`url(#branch-${node.branch})`} />
+          <rect className="flow-card-face" x={-cardWidth / 2} y={-cardHeight / 2} width={cardWidth} height={cardHeight} rx={isItem ? "1" : isBlock || isUnit ? "3" : "7"} fill={isItem ? "rgba(255,164,72,.09)" : `url(#card-${node.branch})`} stroke={isItem ? "#FFB65F" : `url(#branch-${node.branch})`} />
           {!isItem && <rect className="flow-card-sheen" x={-cardWidth / 2 + 1.5} y={-cardHeight / 2 + 1.5} width={cardWidth - 3} height={cardHeight - 3} rx="3" fill="url(#card-sheen)" />}
           <path className="flow-card-accent" d={isItem ? `M ${-cardWidth / 2} ${-cardHeight / 2 + 2} V ${cardHeight / 2 - 2}` : `M ${-cardWidth / 2 + 7} ${-cardHeight / 2} H ${cardWidth / 2 - 7}`} stroke={`url(#branch-${node.branch})`} />
-          {!isItem && <circle className="flow-card-dot" cx={-cardWidth / 2 + 12} cy="0" r="2.2" fill={colors[node.branch]} />}
           <text x="0" y="1" textAnchor="middle" dominantBaseline="middle">{node.name}</text>
           {isItem && <title>{node.name} · 点击纵向穿透</title>}
         </g>;
       })}</g>
     </svg>
-    <div className="flow-columns"><span>业务主线</span><span>业务板块</span><span>业务单元</span><span>业务事项</span></div>
+    <div className="flow-columns"><span>一级 → 业务主线</span><span>二级 → 业务板块</span><span>三级 → 业务单元</span><span>四级 → 业务事项</span></div>
     </div>
-    <div className="flow-tip">悬浮节点，高亮同一主线的完整关联链路 · 点击事项纵向穿透</div>
   </div>;
 }
 
@@ -285,169 +325,380 @@ function SpatialBusinessSpheres({ view, onSelect, onDrill }) {
 
 const grainOrder = ["业务主线", "业务板块", "业务单元", "业务事项"];
 
-function SystemTerrain({ grain, setSelected }) {
+const densityColors = {
+  empty: { top: [10, 27, 50], edge: [37, 95, 151], glow: "rgba(31,111,190,0.16)" },
+  low: { top: [12, 191, 255], edge: [108, 226, 255], glow: "rgba(19,190,255,0.72)" },
+  medium: { top: [116, 66, 255], edge: [188, 151, 255], glow: "rgba(124,76,255,0.72)" },
+  high: { top: [255, 143, 62], edge: [255, 218, 142], glow: "rgba(255,135,54,0.78)" },
+};
+
+const densityClusters = {
+  high: [[3, 4, 1.45], [6, 14, 1.25], [11, 8, 1.45], [13, 16, 1.2]],
+  medium: [[2, 9, 1.7], [4, 16, 1.55], [6, 6, 1.65], [8, 12, 1.7], [10, 3, 1.5], [12, 13, 1.7], [14, 7, 1.45]],
+  low: [[1, 5, 1.35], [2, 13, 1.3], [4, 10, 1.45], [5, 2, 1.25], [7, 17, 1.35], [8, 7, 1.4], [10, 18, 1.2], [12, 4, 1.35], [13, 10, 1.35], [14, 15, 1.25]],
+};
+
+function getDensity(row, column, depth) {
+  const hit = ([r, c, radius]) => {
+    const irregularity = ((row * 17 + column * 11 + depth * 5) % 7 - 3) * .06;
+    return Math.hypot((row - r) * 1.05, (column - c) * .82) <= radius + irregularity;
+  };
+  if (densityClusters.high.some(hit)) return "high";
+  if (densityClusters.medium.some(hit)) return "medium";
+  if (densityClusters.low.some(hit)) return "low";
+  return "empty";
+}
+
+function IsometricGridCanvas({ cells, columns, rows, runKey, selectedId, onSelect, onPhaseChange }) {
+  const canvasRef = useRef(null);
+  const layoutRef = useRef([]);
+  const cellsRef = useRef(cells);
+  cellsRef.current = cells;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const host = canvas.parentElement;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    let raf = 0;
+    let startAt = 0;
+    let width = 1;
+    let height = 1;
+    let lastPhase = "";
+    const holdDuration = 250;
+    const travelDuration = 3250;
+    const localDuration = 700;
+    const totalDuration = 4200;
+    const reportPhase = phase => {
+      if (phase === lastPhase) return;
+      lastPhase = phase;
+      onPhaseChange(phase);
+    };
+
+    const polygon = (points, fill, stroke, lineWidth = 1) => {
+      ctx.beginPath();
+      points.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+      ctx.closePath();
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.stroke(); }
+    };
+    const rgb = color => `rgb(${color.map(value => Math.round(value)).join(",")})`;
+    const rgba = (color, alpha) => `rgba(${color.map(value => Math.round(value)).join(",")},${alpha})`;
+    const mix = (from, to, amount) => from.map((value, index) => value + (to[index] - value) * amount);
+    const easeOut = value => 1 - Math.pow(1 - Math.max(0, Math.min(1, value)), 3);
+
+    const drawPlatform = (positions, tileW, tileH) => {
+      const byId = new Map(positions.map(position => [position.cell.id, position]));
+      const p00 = byId.get("0-0") || positions[0];
+      const pRight = byId.get(`0-${columns - 1}`) || positions[positions.length - 1];
+      const pBottom = byId.get(`${rows - 1}-${columns - 1}`) || positions[positions.length - 1];
+      const pLeft = byId.get(`${rows - 1}-0`) || positions[0];
+      const base = [
+        { x: p00.x, y: p00.y - tileH * .72 },
+        { x: pRight.x + tileW * .56, y: pRight.y },
+        { x: pBottom.x, y: pBottom.y + tileH * .72 },
+        { x: pLeft.x - tileW * .56, y: pLeft.y },
+      ];
+      ctx.save();
+      ctx.shadowBlur = 48;
+      ctx.shadowColor = "rgba(20,116,255,.5)";
+      [26, 17, 9].forEach((offset, index) => polygon(base.map(point => ({ x: point.x, y: point.y + offset })), `rgba(${4 + index * 3},${18 + index * 6},${42 + index * 12},.94)`, `rgba(42,154,255,${.34 + index * .18})`, index === 2 ? 2 : 1));
+      polygon(base, "rgba(4,17,38,.92)", "rgba(85,194,255,.7)", 1.4);
+      ctx.restore();
+    };
+
+    const drawTile = (position, lift, reveal, flash) => {
+      const { cell, x, y, tileW, tileH } = position;
+      const finalTone = densityColors[cell.density];
+      const darkTone = densityColors.empty;
+      const revealed = mix(darkTone.top, finalTone.top, cell.density === "empty" ? 0 : reveal);
+      const topColor = cell.density === "empty" ? darkTone.top : mix(revealed, finalTone.top, flash * .18);
+      const edgeColor = cell.density === "empty" ? mix(darkTone.edge, [72, 133, 182], flash * .12) : mix(darkTone.edge, finalTone.edge, Math.min(1, reveal + flash * .2));
+      const topY = y - lift;
+      const depth = 7 + lift;
+      const halfW = tileW * .445;
+      const halfH = tileH * .445;
+      const top = { x, y: topY - halfH };
+      const right = { x: x + halfW, y: topY };
+      const bottom = { x, y: topY + halfH };
+      const left = { x: x - halfW, y: topY };
+      const lowerRight = { x: x + halfW, y: y + 7 };
+      const lowerBottom = { x, y: y + halfH + 7 };
+      const lowerLeft = { x: x - halfW, y: y + 7 };
+      const active = cell.density !== "empty" && reveal > .05;
+
+      ctx.save();
+      if (active) {
+        ctx.shadowBlur = 8 + flash * 16 + reveal * 6;
+        ctx.shadowColor = finalTone.glow;
+      }
+      polygon([left, bottom, lowerBottom, lowerLeft], rgba(mix(topColor, [2, 11, 31], .58), .94), rgba(edgeColor, .78));
+      polygon([right, bottom, lowerBottom, lowerRight], rgba(mix(topColor, [1, 8, 27], .7), .96), rgba(edgeColor, .7));
+      const gradient = ctx.createLinearGradient(x, top.y, x, bottom.y);
+      gradient.addColorStop(0, rgba(mix(topColor, [224, 246, 255], active ? .18 : .06), active ? .96 : .58));
+      gradient.addColorStop(.42, rgba(topColor, active || flash ? .94 : .5));
+      gradient.addColorStop(1, rgba(mix(topColor, [2, 12, 33], .42), active || flash ? .9 : .58));
+      polygon([top, right, bottom, left], gradient, rgba(edgeColor, flash > .05 ? .98 : .78), flash > .05 ? 1.7 : 1.05);
+      const inset = .77;
+      polygon([
+        { x, y: topY - halfH * inset }, { x: x + halfW * inset, y: topY },
+        { x, y: topY + halfH * inset }, { x: x - halfW * inset, y: topY },
+      ], "rgba(255,255,255,.025)", `rgba(190,238,255,${active ? .23 : .08})`, .7);
+      ctx.beginPath();
+      ctx.moveTo(left.x + tileW * .08, left.y - tileH * .035);
+      ctx.lineTo(top.x, top.y + tileH * .075);
+      ctx.lineTo(right.x - tileW * .08, right.y - tileH * .035);
+      ctx.strokeStyle = `rgba(225,250,255,${cell.density === "empty" ? .07 + flash * .1 : .12 + flash * .18 + (active ? .12 : 0)})`;
+      ctx.lineWidth = .85;
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    const render = now => {
+      raf = 0;
+      const elapsed = Math.max(0, now - startAt);
+      const masterProgress = Math.max(0, Math.min(1, (elapsed - holdDuration) / travelDuration));
+      host.style.setProperty("--wave-progress", `${-12 + masterProgress * 124}%`);
+      reportPhase(elapsed < holdDuration ? "idle" : elapsed < totalDuration ? "running" : "settled");
+      ctx.clearRect(0, 0, width, height);
+      const tileW = Math.min(72, width * 1.68 / (columns + rows));
+      const tileH = tileW * .48;
+      const originX = width * .51;
+      const originY = Math.max(72, height * .115);
+      const positions = cellsRef.current.map(cell => ({
+        cell,
+        x: originX + (cell.column - cell.row) * tileW / 2,
+        y: originY + (cell.column + cell.row) * tileH / 2,
+        tileW,
+        tileH,
+      })).sort((a, b) => a.y - b.y || a.x - b.x);
+      layoutRef.current = positions;
+      const minX = Math.min(...positions.map(position => position.x));
+      const maxX = Math.max(...positions.map(position => position.x));
+      positions.forEach(position => {
+        const horizontal = (position.x - minX) / Math.max(1, maxX - minX);
+        const curveOffset = Math.sin(position.cell.row * .66 + position.cell.column * .05) * 16 + Math.sin(position.cell.row * .24 + position.cell.column * .31) * 8;
+        const noiseOffset = (((position.cell.row * 37 + position.cell.column * 19) % 17) - 8) * 1.45;
+        const delay = Math.max(holdDuration, Math.min(holdDuration + travelDuration, holdDuration + horizontal * travelDuration + curveOffset + noiseOffset));
+        const local = elapsed - delay;
+        let lift = 0;
+        let flash = 0;
+        let reveal = local > 0 ? 0 : 0;
+        if (local < 0) {
+          return;
+        } else if (local < 240) {
+          const progress = Math.sin(local / 240 * Math.PI / 2);
+          lift = 3.5 * progress;
+          flash = .3 * progress;
+          reveal = position.cell.density === "empty" ? 0 : progress;
+        } else if (local < 340) {
+          const progress = (local - 240) / 100;
+          lift = 3.5 - progress * .25;
+          flash = .3 - progress * .08;
+          reveal = position.cell.density === "empty" ? 0 : 1;
+        } else if (local < localDuration) {
+          const progress = .5 - Math.cos((local - 340) / 360 * Math.PI) / 2;
+          lift = 3.25 * (1 - progress);
+          flash = .22 * (1 - progress);
+          reveal = position.cell.density === "empty" ? 0 : 1;
+        } else {
+          return;
+        }
+        drawTile(position, lift, reveal, flash);
+      });
+      if (elapsed < totalDuration) raf = requestAnimationFrame(render);
+    };
+
+    const measure = () => {
+      const bounds = host.getBoundingClientRect();
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      width = Math.max(1, bounds.width);
+      height = Math.max(1, bounds.height);
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+    const observer = new ResizeObserver(() => {
+      measure();
+      if (!raf) raf = requestAnimationFrame(render);
+    });
+    measure();
+    host.style.setProperty("--wave-progress", "-12%");
+    reportPhase("idle");
+    startAt = performance.now();
+    observer.observe(host);
+    raf = requestAnimationFrame(render);
+    return () => { observer.disconnect(); cancelAnimationFrame(raf); };
+  }, [columns, rows, runKey]);
+
+  const selectTile = event => {
+    const bounds = canvasRef.current.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    const match = [...layoutRef.current].reverse().find(position => {
+      const dx = Math.abs(x - position.x) / (position.tileW * .45);
+      const dy = Math.abs(y - position.y) / (position.tileH * .45);
+      return dx + dy <= 1;
+    });
+    if (match?.cell.density !== "empty") onSelect(match.cell);
+  };
+
+  return <canvas ref={canvasRef} className={`system-isometric-canvas ${selectedId ? "has-selection" : ""}`} onClick={selectTile} aria-label="2.5D 业务支撑网格" />;
+}
+
+function BasemapRevealTimeline({ runKey, onPhaseChange }) {
+  const markerRef = useRef(null);
+  useEffect(() => {
+    const host = markerRef.current.parentElement;
+    const holdDuration = 250;
+    const travelDuration = 3250;
+    const totalDuration = 4200;
+    let raf = 0;
+    let lastPhase = "";
+    const startAt = performance.now();
+    const reportPhase = phase => {
+      if (phase === lastPhase) return;
+      lastPhase = phase;
+      onPhaseChange(phase);
+    };
+    const render = now => {
+      const elapsed = Math.max(0, now - startAt);
+      const progress = Math.max(0, Math.min(1, (elapsed - holdDuration) / travelDuration));
+      host.style.setProperty("--wave-progress", `${-12 + progress * 124}%`);
+      reportPhase(elapsed < holdDuration ? "idle" : elapsed < totalDuration ? "running" : "settled");
+      if (elapsed < totalDuration) raf = requestAnimationFrame(render);
+    };
+    host.style.setProperty("--wave-progress", "-12%");
+    reportPhase("idle");
+    raf = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(raf);
+  }, [runKey, onPhaseChange]);
+  return <span ref={markerRef} className="basemap-timeline-marker" aria-hidden="true" />;
+}
+
+const holographicTone = {
+  low: "#21c8ff",
+  medium: "#8358ff",
+  high: "#ff994b",
+};
+
+function HolographicStack({ target, onClose, onOpenApplication }) {
+  const systems = [
+    { name: "城市运行监测系统", category: "运行监测", coverage: "28项", status: "在用", tone: "cyan" },
+    { name: "事件协同处置系统", category: "协同处置", coverage: "16项", status: "在建", tone: "orange" },
+    { name: "数据资源中心", category: "数据支撑", coverage: "34项", status: "在用", tone: "cyan" },
+  ];
+  const [activeIndex, setActiveIndex] = useState(1);
+  const [interactionReady, setInteractionReady] = useState(false);
+  useEffect(() => {
+    setActiveIndex(1);
+    setInteractionReady(false);
+    const timer = setTimeout(() => setInteractionReady(true), 860);
+    return () => clearTimeout(timer);
+  }, [target.id]);
+  const changeLevel = delta => setActiveIndex(index => (index + delta + systems.length) % systems.length);
+  const panelShift = target.anchorY < 35 ? 280 : target.anchorY < 55 ? 160 : 0;
+  return <div className="holographic-projection" style={{ left: `${target.anchorX}%`, top: `${target.anchorY}%`, "--holo-color": holographicTone[target.density], "--panel-shift": `${panelShift}px` }}>
+    <div className="holo-anchor-ring" />
+    <div className="holo-beam"><i /><i /><i /></div>
+    <section className={`holo-stack ${interactionReady ? "is-ready" : ""}`} onWheel={event => { event.preventDefault(); event.stopPropagation(); if (interactionReady) changeLevel(event.deltaY > 0 ? 1 : -1); }}>
+      <button className="holo-close" onClick={onClose} aria-label="关闭全息面板">×</button>
+      {systems.map((system, index) => {
+        return <button key={system.name} className={`holo-card holo-tone-${system.tone} ${activeIndex === index ? "active" : ""}`} style={{ "--card-index": index, "--card-delay": `${index * 110}ms` }} onPointerEnter={() => interactionReady && setActiveIndex(index)} onClick={() => {
+          if (!interactionReady) return;
+          setActiveIndex(index);
+          onOpenApplication({ type: "application", name: system.name, ...system });
+        }}>
+          <div className="holo-card-copy"><b>{system.name}</b><small>{system.category}<i />关联事项 {system.coverage}</small></div>
+          <span>{system.status}</span>
+        </button>;
+      })}
+    </section>
+  </div>;
+}
+
+function SystemTerrain({ grain, onOpenApplication }) {
   const depth = grainOrder.indexOf(grain);
-  const [terrainView, setTerrainView] = useState({ yaw: -8, pitch: 18 });
+  const [terrainView, setTerrainView] = useState({ yaw: 0, pitch: 0 });
   const [terrainZoom, setTerrainZoom] = useState(1);
   const [sliceTarget, setSliceTarget] = useState(null);
+  const [scanRun, setScanRun] = useState(0);
+  const [scanPhase, setScanPhase] = useState("idle");
   const drag = useRef(null);
-  const demoSystemPool = ["城市数据中台", "统一身份认证平台", "视频资源共享平台", "协同办公平台"];
-
-  const project = point => {
-    const angle = terrainView.yaw * Math.PI / 180;
-    const dx = point.x - 50, dy = point.y - 50;
-    const rotatedX = dx * Math.cos(angle) - dy * Math.sin(angle);
-    const rotatedY = dx * Math.sin(angle) + dy * Math.cos(angle);
-    const compression = .58 + terrainView.pitch / 100;
-    return { x: 50 + rotatedX * terrainZoom, y: 52 + rotatedY * compression * terrainZoom };
-  };
-
-  const rawTargets = tree.flatMap((line, lineIndex) => {
+  const demoSystems = ["城市数据中台", "统一身份认证平台", "视频资源共享平台", "协同办公平台"];
+  const targetList = tree.flatMap((line, lineIndex) => {
     const source = flowNames[line.id];
-    const baseColumn = lineIndex % 2 === 0 ? 0 : 11;
-    const baseRow = lineIndex < 2 ? 0 : 7;
-    const gridPoint = (column, row) => ({ x: 12 + (baseColumn + column) * 3.72, y: 10 + (baseRow + row) * 5.82 });
-    if (depth === 0) return [{
-      id: line.id,
-      name: line.name,
-      color: line.color,
-      blocks: line.blocks,
-      point: gridPoint(5, 3),
-      lineIndex,
-    }];
-    if (depth === 1) return source.blocks.map((name, blockIndex) => ({
-      id: `${line.id}-block-${blockIndex}`, name, color: line.color, blocks: [line.blocks[blockIndex]],
-      point: gridPoint(blockIndex ? 8 : 2.5, 3), lineIndex, blockIndex,
-    }));
-    if (depth === 2) return source.units.flatMap((pair, blockIndex) => pair.map((name, unitIndex) => ({
-      id: `${line.id}-unit-${blockIndex}-${unitIndex}`, name, color: line.color, blocks: [line.blocks[blockIndex]],
-      point: gridPoint(blockIndex ? 8 : 2.5, unitIndex ? 5.1 : 1.5), lineIndex, blockIndex, unitIndex,
-    })));
+    if (depth === 0) return [{ id: line.id, name: line.name, blocks: line.blocks, lineIndex }];
+    if (depth === 1) return source.blocks.map((name, blockIndex) => ({ id: `${line.id}-block-${blockIndex}`, name, blocks: [line.blocks[blockIndex]], lineIndex, blockIndex }));
+    if (depth === 2) return source.units.flatMap((pair, blockIndex) => pair.map((name, unitIndex) => ({ id: `${line.id}-unit-${blockIndex}-${unitIndex}`, name, blocks: [line.blocks[blockIndex]], lineIndex, blockIndex, unitIndex })));
     return source.items.map((name, itemIndex) => {
-      const unitGlobal = Math.floor(itemIndex / 3);
-      const blockIndex = Math.floor(unitGlobal / 2);
-      const unitIndex = unitGlobal % 2;
-      const itemSlot = itemIndex % 3;
-      return {
-        id: `${line.id}-item-${itemIndex}`, name, color: line.color, blocks: [line.blocks[blockIndex]],
-        point: gridPoint(blockIndex * 5.5 + .9 + itemSlot * 1.75, unitIndex * 3.5 + 1.45),
-        lineIndex, blockIndex, unitIndex, itemIndex,
-      };
+      const itemsPerBlock = Math.ceil(source.items.length / source.blocks.length);
+      const blockIndex = Math.min(source.blocks.length - 1, Math.floor(itemIndex / itemsPerBlock));
+      return { id: `${line.id}-item-${itemIndex}`, name, blocks: [line.blocks[blockIndex]], lineIndex, blockIndex, itemIndex };
     });
+  }).map((target, index) => {
+    const base = [...new Set(target.blocks.map(block => block.system))];
+    const extras = [0, 0, 1, 0, 2, 0, 1, 3][index % 8];
+    return { ...target, systems: [...new Set([...base, ...demoSystems.slice(0, extras)])] };
   });
-
-  const targets = rawTargets.map((target, index) => {
-    const actualSystems = [...new Set(target.blocks.map(block => block.system))];
-    const supportPattern = [0, 0, 1, 0, 2, 0, 1, 3];
-    const demoExtraCount = depth === 0 ? index % 3 : supportPattern[index % supportPattern.length];
-    const systems = [...new Set([...actualSystems, ...demoSystemPool.slice(0, demoExtraCount)])];
-    return { ...target, systems, itemCount: target.blocks.length, projected: project(target.point) };
+  const columns = 20, rows = 16;
+  const cells = Array.from({ length: columns * rows }, (_, index) => {
+    const row = Math.floor(index / columns), column = index % columns;
+    const corner = (row < 1 || row > 14) && (column < 2 || column > 17);
+    const target = targetList[(row * 3 + column * 5 + depth) % targetList.length];
+    const density = getDensity(row, column, depth);
+    return { id: `${row}-${column}`, row, column, target, density, corner };
+  }).filter(cell => !cell.corner);
+  const waveColumns = 28, waveRows = 20;
+  const waveCells = Array.from({ length: waveColumns * waveRows }, (_, index) => {
+    const row = Math.floor(index / waveColumns), column = index % waveColumns;
+    const sourceRow = Math.round(row / (waveRows - 1) * (rows - 1));
+    const sourceColumn = Math.round(column / (waveColumns - 1) * (columns - 1));
+    const target = targetList[(sourceRow * 3 + sourceColumn * 5 + depth) % targetList.length];
+    return { id: `wave-${row}-${column}`, row, column, target, density: getDensity(sourceRow, sourceColumn, depth) };
   });
+  const interactiveCells = cells.map(cell => ({
+    ...cell.target,
+    id: `grid-${cell.id}`,
+    cellId: cell.id,
+    row: cell.row,
+    column: cell.column,
+    anchorX: 11 + (cell.column + .5) / columns * 78,
+    anchorY: 13 + (cell.row + .5) / rows * 74,
+    density: cell.density === "empty" ? "low" : cell.density,
+    systems: [...new Set([...cell.target.systems, ...demoSystems])].slice(0, 4),
+  }));
   useEffect(() => setSliceTarget(null), [grain]);
-
-  const cells = [];
-  for (let row = 0; row < 14; row += 1) {
-    for (let column = 0; column < 22; column += 1) {
-      const cornerCut = (row === 0 || row === 13) && (column < 2 || column > 19);
-      const edgeCut = (row === 1 || row === 12) && (column === 0 || column === 21);
-      if (cornerCut || edgeCut) continue;
-      const verticalSplit = 10.5 + ((row % 5) - 2) * .38;
-      const horizontalSplit = 6.5 + ((column % 6) - 3) * .2;
-      const lineIndex = (row < horizontalSplit ? 0 : 2) + (column < verticalSplit ? 0 : 1);
-      const localColumn = column % 11;
-      const localRow = row % 7;
-      const blockIndex = localColumn < 5.5 ? 0 : 1;
-      const unitIndex = localRow < 3.5 ? 0 : 1;
-      const itemSlot = Math.min(2, Math.floor((localColumn % 5.5) / 1.84));
-      const itemIndex = blockIndex * 6 + unitIndex * 3 + itemSlot;
-      const target = depth === 0
-        ? targets.find(item => item.lineIndex === lineIndex)
-        : depth === 1
-          ? targets.find(item => item.lineIndex === lineIndex && item.blockIndex === blockIndex)
-          : depth === 2
-            ? targets.find(item => item.lineIndex === lineIndex && item.blockIndex === blockIndex && item.unitIndex === unitIndex)
-            : targets.find(item => item.lineIndex === lineIndex && item.itemIndex === itemIndex);
-      const point = project({ x: 12 + (column + (row % 2) * .5) * 3.72, y: 10 + row * 5.82 });
-      cells.push({ id: `${row}-${column}`, row, column, lineIndex, blockIndex, unitIndex, point, target });
-    }
-  }
-  const cellLookup = new Map(cells.map(cell => [`${cell.row}-${cell.column}`, cell]));
-  cells.forEach(cell => {
-    const offsets = cell.row % 2 === 0
-      ? [[-1,0],[1,0],[0,-1],[-1,-1],[0,1],[-1,1]]
-      : [[-1,0],[1,0],[0,-1],[1,-1],[0,1],[1,1]];
-    const neighbors = offsets.map(([dx, dy]) => cellLookup.get(`${cell.row + dy}-${cell.column + dx}`));
-    cell.mainlineEdge = neighbors.some(neighbor => !neighbor || neighbor.lineIndex !== cell.lineIndex);
-    cell.blockEdge = neighbors.some(neighbor => !neighbor || `${neighbor.lineIndex}-${neighbor.blockIndex}` !== `${cell.lineIndex}-${cell.blockIndex}`);
-    cell.unitEdge = neighbors.some(neighbor => !neighbor || `${neighbor.lineIndex}-${neighbor.blockIndex}-${neighbor.unitIndex}` !== `${cell.lineIndex}-${cell.blockIndex}-${cell.unitIndex}`);
-  });
-
   const moveTerrain = event => {
     if (!drag.current) return;
-    const dx = event.clientX - drag.current.x;
-    const dy = event.clientY - drag.current.y;
-    setTerrainView(view => ({
-      yaw: Math.max(-28, Math.min(28, view.yaw + dx * .18)),
-      pitch: Math.max(-12, Math.min(32, view.pitch - dy * .12)),
-    }));
+    const dx = event.clientX - drag.current.x, dy = event.clientY - drag.current.y;
+    setTerrainView(view => ({ yaw: Math.max(-28, Math.min(28, view.yaw + dx * .22)), pitch: Math.max(-25, Math.min(25, view.pitch - dy * .18)) }));
     drag.current = { x: event.clientX, y: event.clientY };
   };
-
-  return <div className={`system-terrain grain-${depth}`} onPointerDown={event => {
+  return <div className="system-grid-scene" onDoubleClick={() => { setTerrainView({ yaw: 0, pitch: 0 }); setTerrainZoom(1); }} onPointerDown={event => {
     if (event.target.closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { x: event.clientX, y: event.clientY };
   }} onPointerMove={moveTerrain} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null} onWheel={event => {
-    event.preventDefault();
-    setTerrainZoom(value => Math.max(.72, Math.min(1.85, value - event.deltaY * .001)));
+    event.preventDefault(); setTerrainZoom(value => Math.max(.72, Math.min(1.45, value - event.deltaY * .001)));
   }}>
-    <div className="terrain-plane" />
-    <div className="hex-terrain">
-      {cells.map(cell => {
-        const uncoveredCell = (cell.row * 5 + cell.column * 3 + cell.lineIndex) % 13 === 0;
-        const supportCount = uncoveredCell ? 0 : cell.target?.systems.length || 0;
-        const coverage = supportCount >= 4 ? "coverage-high" : supportCount >= 2 ? "coverage-medium" : "coverage-low";
-        return <button key={cell.id} aria-label={`${cell.target?.name || "业务事项"}，${supportCount}个支撑系统`} className={`hex-cell territory-${cell.lineIndex} ${coverage} ${sliceTarget?.cellId === cell.id ? "slice-active" : ""}`} style={{ left: `${cell.point.x}%`, top: `${cell.point.y}%`, "--cell-color": tree[cell.lineIndex].color, "--cell-height": `${2 + supportCount * 2}px`, "--cell-scale": `${(.82 + cell.point.y / 420) * terrainZoom}` }} onClick={() => {
-          if (supportCount > 0) setSliceTarget({ ...cell.target, cellId: cell.id, point: cell.point });
-        }} />;
-      })}
-    </div>
-    {terrainZoom >= 1.18 && targets.map((target, targetIndex) => {
-      const supportCount = target.systems.length;
-      const compact = depth === 3;
-      const showItemLabel = !compact || targetIndex % 2 === 0;
-      if (!showItemLabel) return null;
-      return <button key={target.id} className={`hex-label ${compact ? "item-label" : ""}`} style={{ left: `${target.projected.x}%`, top: `${target.projected.y}%`, "--label-color": target.color }} onClick={() => {
-        if (supportCount === 1) {
-          const system = target.systems[0];
-          setSelected({ type: "system", name: system, ...systemProfiles[system], business: target.name });
-        }
-      }}><b>{target.name}</b><span>{supportCount}个系统</span></button>;
-    })}
-    <div className="beam-field" key={grain}>
-      {targets.map((target, targetIndex) =>
-        <div key={target.id} className={`support-beam ${target.systems.length >= 4 ? "beam-strong" : target.systems.length >= 2 ? "beam-medium" : ""}`} style={{ left: `${target.projected.x}%`, top: `${target.projected.y}%`, "--delay": `${.18 + targetIndex * .13}s`, "--beam-color": target.color }}>
-          <i className="beam-line" /><i className="beam-impact" /><i className="beam-ring" /><i className="beam-particle particle-a" /><i className="beam-particle particle-b" /><i className="beam-particle particle-c" />
-        </div>
-      )}
-    </div>
-    <ViewController view={terrainView} setView={setTerrainView} />
-    {sliceTarget && <div className="system-slice" style={{ left: `${sliceTarget.point.x}%`, top: `${sliceTarget.point.y}%`, "--slice-color": sliceTarget.color }}>
-      <i className="slice-axis" /><i className="slice-base-ring" />
-      <button className="slice-close" onClick={() => setSliceTarget(null)}>×</button>
-      <div className="slice-caption"><b>{sliceTarget.name}</b><span>{sliceTarget.systems.length}个系统支撑</span></div>
-      <div className="slice-stack">
-        {sliceTarget.systems.map((system, index) => {
-          const profile = systemProfiles[system] || { status: "在用", category: "公共能力", owner: "数字化管理处", users: "跨处室使用", services: "多项业务", data: "共享数据资源", health: 80 + index * 3 };
-          return <button key={system} className="slice-system-card" style={{ "--slice-index": index, "--slice-delay": `${index * .08}s` }} onClick={() => setSelected({ type: "system", name: system, ...profile, business: sliceTarget.name })}>
-            <i /><b>{system}</b><span>{profile.status} · {profile.category}</span><em>{String(index + 1).padStart(2, "0")}</em>
-          </button>;
-        })}
+    <div className={`system-basemap phase-${scanPhase}`} style={{ transform: `translate(-50%, -50%) translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}>
+      <img className="system-basemap-image system-basemap-image-empty" src={systemSupportBasemapEmpty} alt="业务支撑空态底图" draggable="false" />
+      <img className="system-basemap-image system-basemap-image-final" src={systemSupportBasemap} alt="业务支撑密度底图" draggable="false" />
+      <img className="system-basemap-image system-basemap-image-ridge" src={systemSupportBasemap} alt="" draggable="false" />
+      <BasemapRevealTimeline runKey={`${grain}-${scanRun}`} onPhaseChange={setScanPhase} />
+      <div className="system-basemap-hitmap" aria-label="可交互业务棋盘">
+        {interactiveCells.map(cell => <button key={cell.id} aria-label={`查看${cell.name}`} className={sliceTarget?.id === cell.id ? "selected" : ""} style={{ gridColumn: cell.column + 1, gridRow: cell.row + 1, "--node-color": holographicTone[cell.density] }} onClick={() => setSliceTarget(current => current?.id === cell.id ? null : cell)} />)}
       </div>
-    </div>}
-    <div className="zoom-controls"><button onClick={() => setTerrainZoom(value => Math.min(1.85, value + .15))}>＋</button><b>{Math.round(terrainZoom * 100)}%</b><button onClick={() => setTerrainZoom(value => Math.max(.72, value - .15))}>－</button></div>
-    <div className="hex-legend"><span>系统覆盖</span><i className="heat-0" />0<i className="heat-1" />1<i className="heat-2" />2-3<i className="heat-3" />4+</div>
-    <div className="terrain-tip">拖动调整视角 · 滚轮缩放 · 放大后显示业务名称</div>
+      {sliceTarget && <HolographicStack target={sliceTarget} onClose={() => setSliceTarget(null)} onOpenApplication={onOpenApplication} />}
+    </div>
+    <aside className="grid-metric-panel">{[["4","主线","梳理核心业务线"],["8","板块","系统功能分类"],["16","单位","业务责任单位"],["32","事项","诊断追踪点"]].map(([value,label,tip]) => <div key={label}><i /><b>{value}</b><span>{label}</span><small>{tip}</small></div>)}</aside>
+    <aside className="grid-legend"><small>数据密度图例<br /><em>DATA DENSITY LEGEND</em></small><span><i className="legend-high" />高密度</span><span><i className="legend-medium" />中密度</span><span><i className="legend-low" />低密度</span></aside>
+    <aside className="grid-density"><small>系统覆盖度</small><div className="density-ring"><b>78%</b></div><p><span>低密度</span><i style={{ width: "68%" }} />68%</p><p><span>中密度</span><i style={{ width: "24%" }} />24%</p><p><span>高密度</span><i style={{ width: "8%" }} />8%</p></aside>
+    <ViewController view={terrainView} setView={setTerrainView} />
+    <div className="grid-zoom"><button onClick={() => setTerrainZoom(value => Math.min(1.45, value + .12))}>＋</button><button onClick={() => setTerrainZoom(value => Math.max(.72, value - .12))}>−</button></div>
+    <div className="grid-hint"><button disabled={scanPhase !== "settled"} onClick={() => { setSliceTarget(null); setScanRun(value => value + 1); }}>{scanPhase === "settled" ? "重新扫描" : scanPhase === "idle" ? "准备点亮" : "扫描中"}</button><span>左 → 右点亮　·　拖动 / 滑轮缩放　·　双击复位</span></div>
   </div>;
 }
 
@@ -456,7 +707,7 @@ function BusinessTree({ activeLayer, selected, setSelected, timeline, lens, view
     <div className="morph-layer morph-sphere"><SpatialBusinessSpheres view={view} onSelect={setSelected} onDrill={onDrill} /></div>
     <div className="morph-layer morph-flat"><DenseBusinessFlow onSelect={setSelected} onDrill={onDrill} view={view} /></div>
   </div>;
-  if (activeLayer === "系统") return <SystemTerrain grain={systemGrain} setSelected={setSelected} />;
+  if (activeLayer === "系统") return <SystemTerrain grain={systemGrain} onOpenApplication={onDrill} />;
   const layerColor = activeLayer === "系统" ? "#a282ff" : activeLayer === "项目" ? "#ffad5b" : activeLayer === "诊断" ? "#ff5f73" : "#52d6ff";
   return <div className="tree-perspective"><div className={`business-tree layer-${activeLayer} ${lens ? "lens-on" : ""}`} style={{ transform: `rotateX(${view.pitch}deg) rotateY(${view.yaw}deg)` }}>
     <svg className="tree-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -540,6 +791,12 @@ function StructurePanel({ onClose }) {
 }
 
 function DrillPage({ data, onBack }) {
+  if (data.type === "application") return <section className="application-panorama-page" aria-label={`${data.name}应用全景图`}>
+    <div className="application-panorama-frame">
+      <img src={applicationPanoramaDesign} alt={`${data.name}应用全景图`} draggable="false" />
+      <button className="application-panorama-back" onClick={onBack} aria-label="返回上一页" title="返回上一页" />
+    </div>
+  </section>;
   const axisName = data.axis === "horizontal" ? "横向剖切" : data.axis === "vertical" ? "纵向穿透" : "全景画像";
   return <section className="drill-page">
     <button className="drill-back" onClick={onBack}>← 返回单位全景</button>
@@ -574,7 +831,9 @@ export function App() {
   const back = () => { setTransitioning(true); setTimeout(() => { setMode("city"); setTransitioning(false); setSelected(null); }, 520); };
   const switchLayer = layer => { setActiveLayer(layer); setSelected(null); };
 
-  return <main className={`app ${mode} ${transitioning ? "transitioning" : ""}`}>
+  const isFlatBusiness = mode === "unit" && activeLayer === "业务" && businessView === "flat";
+
+  return <main className={`app ${mode} ${isFlatBusiness ? "flat-business-view" : ""} ${transitioning ? "transitioning" : ""}`}>
     <ParticleField mode={mode} burst={transitioning} /><div className="aurora aurora-a" /><div className="aurora aurora-b" />
     <header className="topbar">
       <div className="brand-mark"><span /><span /><span /></div><div><div className="eyebrow">JINAN DIGITAL GOVERNANCE</div><h1>数字化诊断全景图</h1></div>
@@ -590,7 +849,7 @@ export function App() {
         <div className="legend"><span><i className="dot gold-dot" />重点单位</span><span><i className="dot blue-dot" />市直单位</span><span><i className="line-key" />业务协同关系</span></div><div className="guide">移动鼠标探索 · 点击单位进入全景</div>
       </> : <>
         <button className="back-button" onClick={back}>← 返回全市</button>
-        <div className="unit-titlebar"><div><div className="section-no">02 / 单位业务全景</div><h2>济南市城市运行管理局</h2></div><div className="mini-metrics"><span><b>4</b>主线</span><span><b>8</b>板块</span><span><b>16</b>单元</span><span><b>32</b>事项</span></div></div>
+        <div className="unit-titlebar"><div><div className="section-no">02 / 单位业务全景</div><h2>济南市城市运行管理局</h2></div><div className="mini-metrics">{isFlatBusiness ? <><span><b>5</b>主线</span><span><b>20</b>板块</span><span><b>40</b>单元</span><span><b>80</b>事项</span></> : <><span><b>4</b>主线</span><span><b>8</b>板块</span><span><b>16</b>单元</span><span><b>32</b>事项</span></>}</div></div>
         <div className="tree-toolbar">
           <div className="layers">{["业务","系统","项目","诊断"].map(layer => <button key={layer} className={activeLayer === layer ? "active" : ""} onClick={() => switchLayer(layer)}><i />{layer}</button>)}</div>
           {activeLayer === "业务" && <div className="business-view-switch"><button className={businessView === "spatial" ? "active" : ""} onClick={() => setBusinessView("spatial")}>空间球图</button><button className={businessView === "flat" ? "active" : ""} onClick={() => setBusinessView("flat")}>平铺流图</button></div>}
@@ -599,8 +858,8 @@ export function App() {
           <button className={`lens-button ${lens ? "active" : ""}`} onClick={() => { setLens(!lens); if (!lens) setActiveLayer("诊断"); }}>诊断透镜</button>
         </div>
         <BusinessTree activeLayer={activeLayer} selected={selected} setSelected={setSelected} timeline={timeline} lens={lens} view={view} onDrill={setDrill} businessView={businessView} systemGrain={systemGrain} />
-        {activeLayer !== "系统" && <ViewController view={view} setView={setView} />}
-        <div className="tree-hint">点击任一节点查看业务纵向穿透或系统横向剖切</div>
+        {activeLayer !== "系统" && !isFlatBusiness && <ViewController view={view} setView={setView} />}
+        {!isFlatBusiness && <div className="tree-hint">点击任一节点查看业务纵向穿透或系统横向剖切</div>}
       </>}
     </section>
     <DetailDrawer selected={selected} onClose={() => setSelected(null)} />
