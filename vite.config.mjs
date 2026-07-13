@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  base: "/jinan-digital-diagnosis/",
+  base: process.env.CF_PAGES ? "/" : "/jinan-digital-diagnosis/",
   optimizeDeps: {
     include: ["react", "react-dom/client"],
   },
