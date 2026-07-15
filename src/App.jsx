@@ -592,23 +592,24 @@ const holographicTone = {
   high: "#ff994b",
 };
 
-function HolographicStack({ target, onClose, onOpenApplication }) {
-  const systems = [
+function HolographicStack({ target, onClose, onOpenApplication, systems: providedSystems }) {
+  const defaultSystems = [
     { name: "城市运行监测系统", category: "运行监测", coverage: "28项", status: "在用", tone: "cyan" },
     { name: "事件协同处置系统", category: "协同处置", coverage: "16项", status: "在建", tone: "orange" },
     { name: "数据资源中心", category: "数据支撑", coverage: "34项", status: "在用", tone: "cyan" },
   ];
+  const systems = providedSystems?.length ? providedSystems : defaultSystems;
   const [activeIndex, setActiveIndex] = useState(1);
   const [interactionReady, setInteractionReady] = useState(false);
   useEffect(() => {
-    setActiveIndex(1);
+    setActiveIndex(Math.min(1, systems.length - 1));
     setInteractionReady(false);
     const timer = setTimeout(() => setInteractionReady(true), 860);
     return () => clearTimeout(timer);
-  }, [target.id]);
+  }, [target.id, systems.length]);
   const changeLevel = delta => setActiveIndex(index => (index + delta + systems.length) % systems.length);
   const panelShift = target.anchorY < 35 ? 280 : target.anchorY < 55 ? 160 : 0;
-  return <div className="holographic-projection" style={{ left: `${target.anchorX}%`, top: `${target.anchorY}%`, "--holo-color": holographicTone[target.density], "--panel-shift": `${panelShift}px` }}>
+  return <div className="holographic-projection" onPointerDown={event => event.stopPropagation()} style={{ left: `${target.anchorX}%`, top: `${target.anchorY}%`, "--holo-color": holographicTone[target.density], "--panel-shift": `${panelShift}px` }}>
     <div className="holo-anchor-ring" />
     <div className="holo-beam"><i /><i /><i /></div>
     <section className={`holo-stack ${interactionReady ? "is-ready" : ""}`} onWheel={event => { event.preventDefault(); event.stopPropagation(); if (interactionReady) changeLevel(event.deltaY > 0 ? 1 : -1); }}>
@@ -883,10 +884,10 @@ const panoramaItems = panoramaModel.nodes.filter(node => node.level === 3);
 const panoramaNodeMap = new Map(panoramaModel.nodes.map(node => [node.id, node]));
 const systemNames = ["城市运行一网统管平台", "城市事件协同处置系统", "城市生命线监测平台", "政务数据共享交换平台", "综合指挥调度平台", "公共服务统一门户", "应急资源管理系统", "城市安全风险平台", "生态环境监测系统", "交通运行分析平台", "建设项目监管平台", "市场主体服务平台", "民生诉求办理平台", "视频资源融合平台", "移动协同办公平台", "数据资产管理平台", "统一身份认证平台", "空间信息基础平台", "物联感知接入平台", "城市体征指标平台", "综合执法监管平台", "防汛抗旱指挥系统", "城市部件管理系统", "公共信用信息平台", "项目全生命周期平台", "智能客服平台", "数字档案管理系统", "领导驾驶舱"];
 const projectNames = ["城市运行中枢升级", "一网统管能力提升", "城市生命线二期", "数据治理专项工程", "应急指挥融合工程", "政务服务体验提升", "城市安全感知工程", "生态监测联网工程", "交通态势优化工程", "建设监管数字化工程", "市场监管协同工程", "民生热线智能化工程", "视频资源整合工程", "数据资产运营工程", "物联感知补盲工程", "城市体征指标工程", "防汛调度提升工程", "移动协同建设工程"];
-const diagnosisCategories = ["无系统支撑", "系统冗余", "重复建设", "数据孤岛", "支撑薄弱", "建设滞后"];
-const diagnosisColors = { "无系统支撑": "#ff5f6d", "系统冗余": "#e25aad", "重复建设": "#ff9c4a", "数据孤岛": "#f4c75e", "支撑薄弱": "#7892b8", "建设滞后": "#9a76ff" };
+const diagnosisCategories = ["无系统支撑", "系统冗余"];
+const diagnosisColors = { "无系统支撑": "#ff5f6d", "系统冗余": "#e25aad" };
 const panoramaSystems = systemNames.map((name, index) => ({
-  id: `system-${index}`, name, status: ["在用", "在建", "规划中"][index % 3],
+  id: `system-${index}`, name, status: ["在用", "在建", "规划中"][index % 3], kind: index % 2 ? "系统" : "平台", buildTime: `${2022 + index % 4}年${String(3 + index % 8).padStart(2, "0")}月`, systemType: ["业务协同", "数据支撑", "运行监测", "综合管理"][index % 4], owner: ["运行监测处", "数据资源处", "指挥调度处"][index % 3],
   targetIds: panoramaItems.filter((_, itemIndex) => (itemIndex * 7 + index * 5) % 31 < 5).slice(0, 18 + index % 8).map(node => node.id)
 }));
 const panoramaProjects = projectNames.map((name, index) => ({
@@ -896,35 +897,32 @@ const panoramaProjects = projectNames.map((name, index) => ({
 const panoramaDiagnoses = Array.from({ length: 36 }, (_, index) => {
   const category = diagnosisCategories[index % diagnosisCategories.length];
   const target = panoramaItems[(index * 19 + 11) % panoramaItems.length];
-  return { id: `diagnosis-${index}`, name: `${target.name}·${category}`, category, severity: ["高", "中", "低"][index % 3], targetIds: [target.id] };
+  return { id: `diagnosis-${index}`, name: `${target.name}·${category}`, category, targetIds: [target.id] };
 });
 
 function PanoramaLayerControls({ activeOverlay, filters, setFilters }) {
   if (!activeOverlay) return null;
   const current = filters[activeOverlay];
   const update = patch => setFilters(value => ({ ...value, [activeOverlay]: { ...value[activeOverlay], ...patch } }));
-  const reset = () => setFilters(value => ({ ...value, [activeOverlay]: activeOverlay === "system" ? { mode: "all", status: "", selectedId: "", search: "", onlyMatched: false, strength: true } : activeOverlay === "project" ? { mode: "all", selectedId: "", stage: "", year: "", search: "", onlyMatched: false } : { mode: "all", selectedId: "", category: "", severity: "", search: "", onlyMatched: false } }));
+  const reset = () => setFilters(value => ({ ...value, [activeOverlay]: activeOverlay === "system" ? { mode: "all", status: "", selectedId: "", search: "", onlyMatched: false, strength: true } : activeOverlay === "project" ? { mode: "all", selectedId: "", stage: "", year: "", search: "", onlyMatched: false } : { mode: "all", selectedId: "", search: "", onlyMatched: false } }));
   if (activeOverlay === "system") return <div className="sidebar-layer-detail system-detail">
-    <input value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索系统名称" />
-    <div className="panel-tabs">{[["all","全部系统"],["status","按状态"]].map(([value,label]) => <button key={value} className={current.mode === value ? "active" : ""} onClick={() => update({ mode: value, status: value === "all" ? "" : current.status })}>{label}</button>)}</div>
-    <div className="panel-chips status-tags">{["在用","在建","规划中"].map(value => <button key={value} className={current.mode === "status" && current.status === value ? "active" : ""} onClick={() => update({ mode: "status", status: current.status === value ? "" : value })}>{value}</button>)}</div>
-    <div className="coverage-level-legend"><span><i className="low" />低</span><span><i className="medium" />中</span><span><i className="high" />高</span></div>
+    <label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索系统名称" value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索系统名称" /></label>
+    <div className="panel-tabs system-filter-tabs">{[["all","全部系统"],["status","按状态"],["single","单个系统"]].map(([value,label]) => <button key={value} className={current.mode === value ? "active" : ""} onClick={() => update({ mode: value, status: value === "status" ? current.status : "" })}>{label}</button>)}</div>
+    {current.mode === "single" && <select aria-label="选择系统" value={current.selectedId} onChange={event => update({ selectedId: event.target.value })}><option value="">选择一个系统</option>{panoramaSystems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
+    {current.mode === "status" && <div className="panel-chips status-tags">{["在用","在建","规划中"].map(value => <button key={value} className={current.status === value ? "active" : ""} onClick={() => update({ status: current.status === value ? "" : value })}>{value}</button>)}</div>}
     <div className="sidebar-detail-footer"><span>28个系统</span><button onClick={reset}>清空</button></div>
   </div>;
   if (activeOverlay === "project") return <div className="sidebar-layer-detail project-detail">
     <div className="panel-tabs">{[["all","全部项目"],["single","单个项目"]].map(([value,label]) => <button key={value} className={current.mode === value ? "active" : ""} onClick={() => update({ mode: value })}>{label}</button>)}</div>
     {current.mode === "single" && <select value={current.selectedId} onChange={event => update({ selectedId: event.target.value })}><option value="">选择一个项目</option>{panoramaProjects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
     <div className="panel-chips">{["规划","建设中","已建成"].map(value => <button key={value} className={current.stage === value ? "active" : ""} onClick={() => update({ stage: current.stage === value ? "" : value })}>{value}</button>)}</div>
-    <input value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索项目名称" />
-    <div className="project-legend"><span><i className="planned" />规划</span><span><i className="building" />建设中</span><span><i className="built" />已建成</span></div>
+    <label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索项目名称" value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索项目名称" /></label>
     <div className="sidebar-detail-footer"><span>18个项目</span><button onClick={reset}>清空</button></div>
   </div>;
   return <div className="sidebar-layer-detail diagnosis-detail">
     <div className="panel-tabs">{[["all","全部问题"],["single","单个问题"]].map(([value,label]) => <button key={value} className={current.mode === value ? "active" : ""} onClick={() => update({ mode: value })}>{label}</button>)}</div>
     {current.mode === "single" && <select value={current.selectedId} onChange={event => update({ selectedId: event.target.value })}><option value="">选择一个问题</option>{panoramaDiagnoses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
-    <div className="diagnosis-legend">{diagnosisCategories.map(value => <button key={value} className={current.category === value ? "active" : ""} style={{ "--legend-color": diagnosisColors[value] }} onClick={() => update({ category: current.category === value ? "" : value })}><i />{value}<b>{6}</b></button>)}</div>
-    <div className="panel-chips"><small>风险等级</small>{["高","中","低"].map(value => <button key={value} className={current.severity === value ? "active" : ""} onClick={() => update({ severity: current.severity === value ? "" : value })}>{value}</button>)}</div>
-    <input value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索问题或业务事项" />
+    <label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索问题或业务事项" value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索问题或业务事项" /></label>
     <div className="sidebar-detail-footer"><span>36条问题</span><button onClick={reset}>清空</button></div>
   </div>;
 }
@@ -996,7 +994,9 @@ function BusinessSankey({ onSelect }) {
 function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
   const [canvasMode, setCanvasMode] = useState("panorama");
   const [businessGranularity, setBusinessGranularity] = useState("item");
+  const [businessSearch, setBusinessSearch] = useState("");
   const [activeOverlay, setActiveOverlay] = useState(null);
+  const [systemSupport, setSystemSupport] = useState(null);
   const [overlayScanRun, setOverlayScanRun] = useState(0);
   const [overlayScanning, setOverlayScanning] = useState(false);
   const [controlCollapsed, setControlCollapsed] = useState(false);
@@ -1005,11 +1005,25 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
   const [filters, setFilters] = useState({
     system: { mode: "all", status: "", selectedId: "", search: "", onlyMatched: false, strength: true },
     project: { mode: "all", selectedId: "", stage: "", year: "", search: "", onlyMatched: false },
-    diagnosis: { mode: "all", selectedId: "", category: "", severity: "", search: "", onlyMatched: false }
+    diagnosis: { mode: "all", selectedId: "", search: "", onlyMatched: false }
   });
   const dragRef = useRef(null);
   const maxLevel = { block: 1, unit: 2, item: 3 }[businessGranularity];
   const currentFilter = activeOverlay ? filters[activeOverlay] : null;
+  const businessQuery = businessSearch.trim().toLowerCase();
+  const businessMatches = useMemo(() => {
+    if (!businessQuery) return null;
+    const matches = new Set();
+    panoramaModel.nodes.forEach(node => {
+      if (!node.name.toLowerCase().includes(businessQuery)) return;
+      let current = node;
+      while (current) {
+        matches.add(current.id);
+        current = current.parentId ? panoramaNodeMap.get(current.parentId) : null;
+      }
+    });
+    return matches;
+  }, [businessQuery]);
   const activeEntities = useMemo(() => {
     if (!activeOverlay) return [];
     const collection = activeOverlay === "system" ? panoramaSystems : activeOverlay === "project" ? panoramaProjects : panoramaDiagnoses;
@@ -1018,8 +1032,6 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
       if (activeOverlay === "system" && currentFilter.mode === "status" && currentFilter.status && entity.status !== currentFilter.status) return false;
       if (activeOverlay === "project" && currentFilter.stage && entity.stage !== currentFilter.stage) return false;
       if (activeOverlay === "project" && currentFilter.year && entity.year !== currentFilter.year) return false;
-      if (activeOverlay === "diagnosis" && currentFilter.category && entity.category !== currentFilter.category) return false;
-      if (activeOverlay === "diagnosis" && currentFilter.severity && entity.severity !== currentFilter.severity) return false;
       return !currentFilter.search || entity.name.includes(currentFilter.search);
     });
   }, [activeOverlay, currentFilter]);
@@ -1060,6 +1072,36 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
     if (target) setCamera(value => ({ ...value, x: 820 - target.x * value.zoom, y: 360 - target.y * value.zoom }));
   };
   const openNode = node => {
+    if (activeOverlay === "system") {
+      const branchItems = panoramaItems.filter(item => {
+        let current = item;
+        while (current) {
+          if (current.id === node.id) return true;
+          current = current.parentId ? panoramaNodeMap.get(current.parentId) : null;
+        }
+        return false;
+      });
+      const branchItemIds = new Set(branchItems.map(item => item.id));
+      const supported = panoramaSystems.filter(entity => entity.targetIds.some(targetId => branchItemIds.has(targetId)));
+      const seed = Math.abs(Math.round(node.x + node.y));
+      const fallback = supported.length ? supported : [panoramaSystems[seed % panoramaSystems.length] || panoramaSystems[0]];
+      const viewportWidth = Math.max(1, window.innerWidth);
+      const viewportHeight = Math.max(1, window.innerHeight - 86);
+      const anchorX = Math.max(18, Math.min(82, ((node.x + node.width / 2) * camera.zoom + camera.x) / viewportWidth * 100));
+      const anchorY = Math.max(20, Math.min(78, (node.y * camera.zoom + camera.y) / viewportHeight * 100));
+      setSystemSupport({
+        node,
+        target: { id: `panorama-${node.id}`, name: node.name, anchorX, anchorY, density: fallback.length >= 5 ? "high" : fallback.length >= 3 ? "medium" : "low" },
+        systems: fallback.slice(0, 3).map((system, index) => ({
+          ...system,
+          category: system.systemType,
+          coverage: `${system.targetIds.filter(targetId => branchItemIds.has(targetId)).length || 1}项`,
+          tone: system.status === "在建" ? "orange" : "cyan",
+          index
+        }))
+      });
+      return;
+    }
     const seed = Math.abs(Math.round(node.x + node.y));
     const relatedSystem = panoramaSystems.find(entity => entity.targetIds.includes(node.id)) || panoramaSystems[seed % panoramaSystems.length] || panoramaSystems[0];
     const relatedProject = panoramaProjects.find(entity => entity.targetIds.includes(node.id)) || panoramaProjects[seed % panoramaProjects.length] || panoramaProjects[0];
@@ -1078,10 +1120,12 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
     if (canvasMode !== "panorama") setCanvasMode("panorama");
     if (activeOverlay === value) {
       setActiveOverlay(null);
+      setSystemSupport(null);
       setOverlayScanning(false);
       return;
     }
     setActiveOverlay(value);
+    setSystemSupport(null);
     setOverlayScanRun(run => run + 1);
     setOverlayScanning(true);
   };
@@ -1095,31 +1139,45 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
     {controlCollapsed ? <button className="panorama-control-launcher" onClick={() => setControlCollapsed(false)}><i />视图控制</button> : <aside className="panorama-control-sidebar">
       <div className="sidebar-title"><div><small>VIEW CONTROL</small><h3>视图控制</h3></div><button className="sidebar-collapse" onClick={() => setControlCollapsed(true)} title="收起面板">收起</button></div>
       <section className="sidebar-section"><div className="sidebar-section-heading"><b>底图视图</b></div><div className="sidebar-segment">{[["panorama","业务树"],["flow","桑基图"],["system","业务矩阵"]].map(([value,label]) => <button key={value} className={canvasMode === value ? "active" : ""} onClick={() => { setCanvasMode(value); setSelected(null); }}>{label}</button>)}</div></section>
-      <section className="sidebar-section overlay-section"><div className="sidebar-section-heading"><b>叠加图层</b><span>单选</span></div>{[["system","系统"],["project","项目"],["diagnosis","诊断"]].map(([value,label]) => <Fragment key={value}><button className={`layer-toggle-row ${canvasMode === "panorama" && activeOverlay === value ? "active" : ""}`} onClick={() => toggleOverlay(value)}><span><i />{label}</span><em /></button>{canvasMode === "panorama" && activeOverlay === value && <PanoramaLayerControls activeOverlay={activeOverlay} filters={filters} setFilters={setFilters} />}</Fragment>)}</section>
       {canvasMode === "panorama" && <section className="sidebar-section granularity-section"><div className="sidebar-section-heading"><b>展示层级</b></div><div className="sidebar-segment compact">{[["block","板块"],["unit","单元"],["item","事项"]].map(([value,label]) => <button key={value} className={businessGranularity === value ? "active" : ""} onClick={() => setBusinessGranularity(value)}>{label}</button>)}</div></section>}
+      {canvasMode === "panorama" && <section className="sidebar-section business-filter-section"><div className="sidebar-section-heading"><b>业务筛选</b><span>{businessQuery ? `${businessMatches?.size || 0} 个节点` : "模糊匹配"}</span></div><label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索板块、单元或事项" value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} placeholder="搜索板块 / 单元 / 事项" /></label>{businessQuery && <button className="business-filter-clear" onClick={() => setBusinessSearch("")}>清空业务筛选</button>}</section>}
+      <section className="sidebar-section overlay-section"><div className="sidebar-section-heading"><b>叠加图层</b><span>单选</span></div>{[["system","系统"],["project","项目"],["diagnosis","诊断"]].map(([value,label]) => <Fragment key={value}><button className={`layer-toggle-row ${canvasMode === "panorama" && activeOverlay === value ? "active" : ""}`} onClick={() => toggleOverlay(value)}><span><i />{label}</span><em /></button>{canvasMode === "panorama" && activeOverlay === value && <PanoramaLayerControls activeOverlay={activeOverlay} filters={filters} setFilters={setFilters} />}</Fragment>)}</section>
     </aside>}
     {canvasMode === "panorama" && <div className={`panorama-canvas overlay-${activeOverlay || "none"} ${overlayScanning ? "is-overlay-scanning" : ""}`} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onWheel={event => { event.preventDefault(); zoom(event.deltaY < 0 ? .06 : -.06); }}>
       <div className="panorama-grid" />
+      {activeOverlay === "system" && <div className="panorama-coverage-legend" aria-label="系统覆盖强度图例"><small>覆盖强度</small><span><i className="high" />高</span><span><i className="medium" />中</span><span><i className="low" />低</span></div>}
+      {activeOverlay === "project" && <div className="panorama-project-legend" aria-label="项目阶段图例"><small>项目阶段</small><span><i className="planned" />规划</span><span><i className="building" />建设中</span><span><i className="built" />已建成</span></div>}
+      {activeOverlay === "diagnosis" && <div className="panorama-diagnosis-legend" aria-label="诊断问题图例"><small>问题类型</small>{diagnosisCategories.map(value => <span key={value}><i style={{ "--legend-color": diagnosisColors[value] }} />{value}</span>)}</div>}
+      {!activeOverlay && <div className="panorama-basemap-legend" aria-label="业务底图图例"><small>底图说明</small><span><i />业务节点</span><span><i className="line" />层级关系</span></div>}
       <div key={`panorama-world-${overlayScanRun}`} className="panorama-world" style={{ transform: `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom}) rotateX(${camera.pitch}deg) rotateZ(${camera.yaw}deg)`, "--overlay-color": overlayBase }}>
         <svg className="panorama-links" viewBox="0 0 7600 6400" preserveAspectRatio="none">{visibleLinks.map(link => {
           const from = panoramaNodeMap.get(link.from); const to = panoramaNodeMap.get(link.to); const hit = coverage.has(to.id); const elbow = from.x + (to.x - from.x) * .54;
           const points = `${from.x + from.width / 2},${from.y} ${elbow},${from.y} ${elbow},${to.y} ${to.x - to.width / 2},${to.y}`;
           const delay = `${scanDelay(to.x)}s`;
-          return <Fragment key={`${link.from}-${link.to}`}><polyline className={activeOverlay ? hit ? "matched" : "dimmed" : ""} points={points} pathLength="1" style={{ "--scan-delay": delay }} />{activeOverlay && hit && <polyline className="panorama-energy-line" points={points} pathLength="1" style={{ "--scan-delay": delay }} />}</Fragment>;
+          const businessHit = !businessMatches || businessMatches.has(from.id) || businessMatches.has(to.id);
+          const linkClass = [activeOverlay ? hit ? "matched" : "dimmed" : "", businessMatches && !businessHit ? "business-filter-dimmed" : ""].filter(Boolean).join(" ");
+          return <Fragment key={`${link.from}-${link.to}`}><polyline className={linkClass} points={points} pathLength="1" style={{ "--scan-delay": delay }} />{activeOverlay && hit && <polyline className="panorama-energy-line" points={points} pathLength="1" style={{ "--scan-delay": delay }} />}</Fragment>;
         })}</svg>
         {visibleNodes.map(node => {
           const hitCount = coverage.get(node.id) || 0;
           const isDimmed = activeOverlay && !hitCount;
+          const isBusinessDimmed = businessMatches && !businessMatches.has(node.id);
           const diagnosis = activeOverlay === "diagnosis" ? activeEntities.find(entity => entity.targetIds.includes(node.id)) : null;
           const tone = activeOverlay === "system" && hitCount ? systemCoverageTone(hitCount) : diagnosis ? diagnosisColors[diagnosis.category] : overlayBase;
-          return <button key={node.id} className={`panorama-node level-${node.level} ${hitCount ? "matched" : ""} ${isDimmed ? "dimmed" : ""} ${currentFilter?.onlyMatched && isDimmed ? "hidden-match" : ""}`} style={{ left: node.x, top: node.y, width: node.width, "--node-overlay": tone, "--coverage": Math.min(1, .34 + hitCount * .13), "--scan-delay": `${scanDelay(node.x) + .35}s` }} onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); openNode(node); }}><i /><span><b>{node.name}</b></span></button>;
+          return <button key={node.id} className={`panorama-node level-${node.level} ${hitCount ? "matched" : ""} ${isDimmed ? "dimmed" : ""} ${isBusinessDimmed ? "business-filter-dimmed" : ""} ${systemSupport?.node.id === node.id ? "system-selected" : ""} ${currentFilter?.onlyMatched && (isDimmed || isBusinessDimmed) ? "hidden-match" : ""}`} style={{ left: node.x, top: node.y, width: node.width, "--node-overlay": tone, "--coverage": Math.min(1, .34 + hitCount * .13), "--scan-delay": `${scanDelay(node.x) + .35}s` }} onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); openNode(node); }}><i /><span><b>{node.name}</b></span></button>;
         })}
       </div>
+      {activeOverlay === "system" && systemSupport && <HolographicStack
+        target={systemSupport.target}
+        systems={systemSupport.systems}
+        onClose={() => setSystemSupport(null)}
+        onOpenApplication={onOpenApplication}
+      />}
       <div className="panorama-scale">缩放 {Math.round(camera.zoom * 100)}% · 拖动画布 / 滚轮缩放</div>
     </div>}
     {canvasMode === "flow" && <BusinessSankey onSelect={selectLegacyBusiness} />}
     {canvasMode === "system" && <SystemTerrain grain="业务事项" onOpenApplication={onOpenApplication} systemView="board" />}
-    {canvasMode === "panorama" && <><ViewController view={{ yaw: camera.yaw, pitch: camera.pitch }} setView={setPanoramaView} /><div className="map-control-stack panorama-map-controls"><button onClick={() => zoom(.08)} title="放大" aria-label="放大">＋</button><button onClick={() => zoom(-.08)} title="缩小" aria-label="缩小">−</button><button onClick={resetView} title="复位" aria-label="复位">↺</button><button className={viewPreset === "oblique" ? "active" : ""} onClick={toggleView} title="倾斜视角" aria-label="倾斜视角">◇</button></div></>}
+    {canvasMode === "panorama" && <div className="panorama-control-cluster"><ViewController view={{ yaw: camera.yaw, pitch: camera.pitch }} setView={setPanoramaView} /><div className="map-control-stack panorama-map-controls"><button onClick={() => zoom(.08)} title="放大" aria-label="放大">＋</button><button onClick={() => zoom(-.08)} title="缩小" aria-label="缩小">−</button><button onClick={resetView} title="复位" aria-label="复位">↺</button><button className={viewPreset === "oblique" ? "active" : ""} onClick={toggleView} title="倾斜视角" aria-label="倾斜视角">◇</button></div></div>}
   </div>;
 }
 
@@ -1129,7 +1187,9 @@ function DetailDrawer({ selected, onClose }) {
   const system = selected.type === "system";
   const project = selected.type === "project";
   const diagnosis = selected.type === "diagnosis";
-  return <aside className="detail-drawer">
+  return <>
+    <button className="drawer-scrim" aria-label="关闭详情抽屉" onClick={onClose} />
+    <aside className="detail-drawer" aria-label="详情抽屉">
     <button className="drawer-close" onClick={onClose}>×</button>
     <div className="drawer-kicker">{system ? "SYSTEM PROFILE / 横向剖切" : business ? "BUSINESS PROFILE / 纵向穿透" : project ? "PROJECT PROFILE" : diagnosis ? "DIAGNOSIS / 智能诊断" : "BUSINESS CONTEXT"}</div>
     <h3>{selected.name}</h3>
@@ -1151,7 +1211,8 @@ function DetailDrawer({ selected, onClose }) {
       <div className="diagnosis-card"><small>项目匹配诊断</small><b>项目目标与业务需求基本一致</b><p>建议补充项目交付指标与业务事项成效指标之间的映射。</p></div>
     </>}
     {diagnosis && <><div className="diagnosis-score"><b>76</b><span>综合诊断指数</span></div><div className="diagnosis-card warning"><small>发现问题</small><b>{selected.name}</b><p>影响业务：{selected.business}<br />关联系统：{selected.system}</p></div><div className="action-list"><b>建议动作</b><span>01 统一数据标准</span><span>02 复用现有系统能力</span><span>03 纳入项目建设清单</span></div></>}
-  </aside>;
+    </aside>
+  </>;
 }
 
 function StructurePanel({ onClose }) {
