@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import systemSupportBasemap from "./assets/system-support-basemap.png";
 import systemSupportBasemapEmpty from "./assets/system-support-basemap-empty.png";
 import applicationPanoramaDesign from "./assets/application-panorama-design.png";
@@ -18,6 +18,14 @@ const units = [
   { id: "market", name: "市场监督管理局", x: 35, y: 82, size: 37, tone: "blue", score: 75 },
   { id: "civil", name: "民政局", x: 10, y: 72, size: 31, tone: "blue", score: 79 },
   { id: "sports", name: "体育局", x: 61, y: 13, size: 28, tone: "blue", score: 68 },
+];
+
+const cityBusinessLinks = [
+  { from: "data", to: "transport", bend: -8 }, { from: "city", to: "emergency", bend: 7 },
+  { from: "water", to: "housing", bend: 8 }, { from: "approval", to: "commerce", bend: -7 },
+  { from: "education", to: "health", bend: -5 }, { from: "market", to: "commerce", bend: 6 },
+  { from: "civil", to: "health", bend: -4 }, { from: "transport", to: "emergency", bend: 5 },
+  { from: "housing", to: "water", bend: -6 }, { from: "data", to: "approval", bend: 5 },
 ];
 
 const tree = [
@@ -90,10 +98,10 @@ function ParticleField({ mode, burst }) {
 
 function CityConnections() {
   return <svg className="connections city-connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    {units.slice(1).map(u => <line key={u.id} x1="48" y1="47" x2={u.x} y2={u.y} />)}
-    {units.slice(1).map((u, i) => {
-      const next = units[(i + 3) % units.length];
-      return <line className="secondary-link" key={`secondary-${u.id}`} x1={u.x} y1={u.y} x2={next.x} y2={next.y} />;
+    {cityBusinessLinks.map(link => {
+      const from = units.find(unit => unit.id === link.from);
+      const to = units.find(unit => unit.id === link.to);
+      return <line className="business-thread" key={`${link.from}-${link.to}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y} />;
     })}
   </svg>;
 }
@@ -107,11 +115,12 @@ function ViewController({ view, setView }) {
     drag.current = { x: e.clientX, y: e.clientY };
   };
   return <div className="view-controller" onPointerMove={move} onPointerUp={() => drag.current = null} onPointerLeave={() => drag.current = null}>
-    <small>360° 视角</small>
+    <small>三维视角</small>
     <button className="joystick" onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY }; }}>
       <i style={{ transform: `translate(${Math.sin(view.yaw / 50) * 10}px, ${-view.pitch / 3}px)` }} />
     </button>
-    <div><button onClick={() => setView(v => ({ ...v, yaw: v.yaw - 25 }))}>‹</button><button onClick={() => setView({ yaw: 0, pitch: 0 })}>复位</button><button onClick={() => setView(v => ({ ...v, yaw: v.yaw + 25 }))}>›</button></div>
+    <em>环绕 / 俯仰</em>
+    <div><button onClick={() => setView(v => ({ ...v, yaw: v.yaw - 25, pitch: -14 }))}>‹</button><button onClick={() => setView({ yaw: 0, pitch: 0 })}>复位</button><button onClick={() => setView(v => ({ ...v, yaw: v.yaw + 25, pitch: -14 }))}>›</button></div>
   </div>;
 }
 
@@ -618,7 +627,68 @@ function HolographicStack({ target, onClose, onOpenApplication }) {
   </div>;
 }
 
-function SystemTerrain({ grain, onOpenApplication }) {
+function SystemBusinessTree({ grain, scanPhase, scanRun, sliceTarget, setSliceTarget, onOpenApplication }) {
+  const depth = grainOrder.indexOf(grain);
+  // Oversized coordinate plane: every business tree is a standalone cluster,
+  // not a row in a fixed three-column diagram.
+  const canvas = { width: 3600, height: 2200 };
+  const clusterLayouts = [
+    { x: 92, y: 118 }, { x: 1238, y: 392 }, { x: 2465, y: 168 }, { x: 356, y: 980 },
+    { x: 1644, y: 1136 }, { x: 2752, y: 1310 }, { x: -244, y: 1694 }, { x: 1058, y: 1818 },
+  ];
+  const cardWidth = { block: 222, unit: 208, item: 265 };
+  const branches = tree.flatMap((line, lineIndex) => {
+    const source = flowNames[line.id];
+    return source.blocks.slice(0, 2).map((block, blockIndex) => {
+      const itemOffset = blockIndex * 4;
+      const units = source.units[blockIndex] || [];
+      const items = source.items.slice(itemOffset, itemOffset + 4);
+      const row = lineIndex * 2 + blockIndex;
+      const origin = clusterLayouts[row];
+      const makeTarget = (name, level, index, x, y) => ({
+      id: `tree-${line.id}-${blockIndex}-${level}-${index}`,
+      name,
+      lineId: line.id,
+      lineIndex,
+      block,
+      x, y,
+      systems: ["城市数据中台", "统一身份认证平台", "视频资源共享平台", "协同办公平台"].slice(0, 2 + ((row + index) % 3)),
+      density: ["low", "medium", "high", "low", "medium"][(row * 3 + index + depth) % 5],
+      });
+      return {
+        id: `${line.id}-${blockIndex}`,
+        block: makeTarget(block, "block", 0, origin.x, origin.y + 124),
+        units: units.map((name, index) => makeTarget(name, "unit", index, origin.x + 326, origin.y + (index ? 204 : 42))),
+        items: items.map((name, index) => makeTarget(name, "item", index, origin.x + 676, origin.y + 8 + index * 76)),
+      };
+    });
+  });
+  const elbow = (from, fromType, to) => {
+    const sourceX = from.x + cardWidth[fromType];
+    const turnX = sourceX + Math.max(44, (to.x - sourceX) * .46);
+    return `${sourceX} ${from.y}, ${turnX} ${from.y}, ${turnX} ${to.y}, ${to.x} ${to.y}`;
+  };
+  const targetCard = (target, type) => <button key={target.id} className={`system-tree-card ${type} tone-${target.density} ${sliceTarget?.id === target.id ? "selected" : ""}`} style={{ "--tree-x": `${target.x}px`, "--tree-y": `${target.y}px`, "--tree-w": `${cardWidth[type]}px`, "--scan-delay": `${160 + target.x * .92 + target.y * .045}ms` }} disabled={scanPhase !== "settled"} onClick={() => setSliceTarget(current => current?.id === target.id ? null : target)}>
+    <i /><b>{target.name}</b><span>{type === "block" ? "业务板块" : type === "unit" ? "业务单元" : `支撑强度 · ${target.density === "high" ? "高" : target.density === "medium" ? "中" : "低"}`}</span>
+  </button>;
+  return <div className={`system-business-tree phase-${scanPhase}`} key={`${grain}-${scanRun}`} style={{ "--tree-canvas-w": `${canvas.width}px`, "--tree-canvas-h": `${canvas.height}px` }}>
+    <div className="tree-canvas-label">BUSINESS RELATIONSHIP SPACE · CONTINUOUS CANVAS</div>
+    <svg className="system-tree-lines" viewBox={`0 0 ${canvas.width} ${canvas.height}`} aria-hidden="true">
+      {branches.map(branch => <g key={branch.id} style={{ "--line-delay": `${150 + branch.block.x * .92 + branch.block.y * .045}ms` }}>
+        {branch.units.map((unit, unitIndex) => <polyline key={`unit-${unitIndex}`} points={elbow(branch.block, "block", unit)} />)}
+        {branch.items.map((item, itemIndex) => <polyline key={`item-${itemIndex}`} points={elbow(branch.units[Math.floor(itemIndex / 2)], "unit", item)} />)}
+      </g>)}
+    </svg>
+    {branches.map((branch, branchIndex) => <Fragment key={branch.id}>
+      {targetCard(branch.block, "block")}
+      {branch.units.map(target => targetCard(target, "unit"))}
+      {branch.items.map(target => targetCard(target, "item"))}
+    </Fragment>)}
+    {sliceTarget && <HolographicStack target={sliceTarget} onClose={() => setSliceTarget(null)} onOpenApplication={onOpenApplication} />}
+  </div>;
+}
+
+function SystemTerrain({ grain, onOpenApplication, systemView }) {
   const depth = grainOrder.indexOf(grain);
   const [terrainView, setTerrainView] = useState({ yaw: 0, pitch: 0 });
   const [terrainZoom, setTerrainZoom] = useState(1);
@@ -670,6 +740,17 @@ function SystemTerrain({ grain, onOpenApplication }) {
     systems: [...new Set([...cell.target.systems, ...demoSystems])].slice(0, 4),
   }));
   useEffect(() => setSliceTarget(null), [grain]);
+  useEffect(() => {
+    let frame = 0;
+    const startedAt = performance.now();
+    const tick = now => {
+      const elapsed = now - startedAt;
+      setScanPhase(elapsed < 250 ? "idle" : elapsed < 4200 ? "running" : "settled");
+      if (elapsed < 4200) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [scanRun]);
   const moveTerrain = event => {
     if (!drag.current) return;
     const dx = event.clientX - drag.current.x, dy = event.clientY - drag.current.y;
@@ -683,31 +764,36 @@ function SystemTerrain({ grain, onOpenApplication }) {
   }} onPointerMove={moveTerrain} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null} onWheel={event => {
     event.preventDefault(); setTerrainZoom(value => Math.max(.72, Math.min(1.45, value - event.deltaY * .001)));
   }}>
-    <div className={`system-basemap phase-${scanPhase}`} style={{ transform: `translate(-50%, -50%) translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}>
+    {systemView === "board" ? <div className={`system-basemap phase-${scanPhase}`} style={{ transform: `translate(-50%, -50%) translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}>
       <img className="system-basemap-image system-basemap-image-empty" src={systemSupportBasemapEmpty} alt="业务支撑空态底图" draggable="false" />
       <img className="system-basemap-image system-basemap-image-final" src={systemSupportBasemap} alt="业务支撑密度底图" draggable="false" />
       <img className="system-basemap-image system-basemap-image-ridge" src={systemSupportBasemap} alt="" draggable="false" />
       <BasemapRevealTimeline runKey={`${grain}-${scanRun}`} onPhaseChange={setScanPhase} />
-      <div className="system-basemap-hitmap" aria-label="可交互业务棋盘">
-        {interactiveCells.map(cell => <button key={cell.id} aria-label={`查看${cell.name}`} className={sliceTarget?.id === cell.id ? "selected" : ""} style={{ gridColumn: cell.column + 1, gridRow: cell.row + 1, "--node-color": holographicTone[cell.density] }} onClick={() => setSliceTarget(current => current?.id === cell.id ? null : cell)} />)}
+      <div className="system-basemap-hitmap" aria-label="可交互业务矩阵">
+        {interactiveCells.map(cell => <div key={cell.id} className="system-basemap-hitcell" style={{ gridColumn: cell.column + 1, gridRow: cell.row + 1, "--node-color": holographicTone[cell.density] }}><button aria-label={`查看${cell.name}`} className={sliceTarget?.id === cell.id ? "selected" : ""} onClick={() => setSliceTarget(current => current?.id === cell.id ? null : cell)} /><span>{cell.name}</span></div>)}
       </div>
       {sliceTarget && <HolographicStack target={sliceTarget} onClose={() => setSliceTarget(null)} onOpenApplication={onOpenApplication} />}
-    </div>
+    </div> : <div className="system-tree-stage" style={{ transform: `translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}><SystemBusinessTree grain={grain} scanPhase={scanPhase} scanRun={scanRun} sliceTarget={sliceTarget} setSliceTarget={setSliceTarget} onOpenApplication={onOpenApplication} /></div>}
     <aside className="grid-metric-panel">{[["4","主线","梳理核心业务线"],["8","板块","系统功能分类"],["16","单位","业务责任单位"],["32","事项","诊断追踪点"]].map(([value,label,tip]) => <div key={label}><i /><b>{value}</b><span>{label}</span><small>{tip}</small></div>)}</aside>
     <aside className="grid-legend"><small>数据密度图例<br /><em>DATA DENSITY LEGEND</em></small><span><i className="legend-high" />高密度</span><span><i className="legend-medium" />中密度</span><span><i className="legend-low" />低密度</span></aside>
     <aside className="grid-density"><small>系统覆盖度</small><div className="density-ring"><b>78%</b></div><p><span>低密度</span><i style={{ width: "68%" }} />68%</p><p><span>中密度</span><i style={{ width: "24%" }} />24%</p><p><span>高密度</span><i style={{ width: "8%" }} />8%</p></aside>
     <ViewController view={terrainView} setView={setTerrainView} />
-    <div className="grid-zoom"><button onClick={() => setTerrainZoom(value => Math.min(1.45, value + .12))}>＋</button><button onClick={() => setTerrainZoom(value => Math.max(.72, value - .12))}>−</button></div>
+    <div className="map-control-stack matrix-map-controls">
+      <button onClick={() => setTerrainZoom(value => Math.min(1.45, value + .12))} title="放大" aria-label="放大">＋</button>
+      <button onClick={() => setTerrainZoom(value => Math.max(.72, value - .12))} title="缩小" aria-label="缩小">−</button>
+      <button onClick={() => { setTerrainView({ yaw: 0, pitch: 0 }); setTerrainZoom(1); }} title="复位" aria-label="复位">↺</button>
+      <button className={terrainView.pitch ? "active" : ""} onClick={() => setTerrainView(value => ({ ...value, pitch: value.pitch ? 0 : -18 }))} title="倾斜视角" aria-label="倾斜视角">◇</button>
+    </div>
     <div className="grid-hint"><button disabled={scanPhase !== "settled"} onClick={() => { setSliceTarget(null); setScanRun(value => value + 1); }}>{scanPhase === "settled" ? "重新扫描" : scanPhase === "idle" ? "准备点亮" : "扫描中"}</button><span>左 → 右点亮　·　拖动 / 滑轮缩放　·　双击复位</span></div>
   </div>;
 }
 
-function BusinessTree({ activeLayer, selected, setSelected, timeline, lens, view, onDrill, businessView, systemGrain }) {
+function BusinessTree({ activeLayer, selected, setSelected, timeline, lens, view, onDrill, businessView, systemGrain, systemView }) {
   if (activeLayer === "业务") return <div className={`business-morph morph-${businessView}`}>
     <div className="morph-layer morph-sphere"><SpatialBusinessSpheres view={view} onSelect={setSelected} onDrill={onDrill} /></div>
     <div className="morph-layer morph-flat"><DenseBusinessFlow onSelect={setSelected} onDrill={onDrill} view={view} /></div>
   </div>;
-  if (activeLayer === "系统") return <SystemTerrain grain={systemGrain} onOpenApplication={onDrill} />;
+  if (activeLayer === "系统") return <SystemTerrain grain={systemGrain} onOpenApplication={onDrill} systemView={systemView} />;
   const layerColor = activeLayer === "系统" ? "#a282ff" : activeLayer === "项目" ? "#ffad5b" : activeLayer === "诊断" ? "#ff5f73" : "#52d6ff";
   return <div className="tree-perspective"><div className={`business-tree layer-${activeLayer} ${lens ? "lens-on" : ""}`} style={{ transform: `rotateX(${view.pitch}deg) rotateY(${view.yaw}deg)` }}>
     <svg className="tree-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -746,6 +832,295 @@ function BusinessTree({ activeLayer, selected, setSelected, timeline, lens, view
     </div>)}
     <div className="tree-depth"><span>单位</span><span>业务主线</span><span>业务板块</span><span>业务单元</span><span>业务事项</span><span>{activeLayer === "业务" ? "关联图层" : activeLayer}</span></div>
   </div></div>;
+}
+
+const panoramaLines = [
+  "城市运行统筹", "城市治理监督", "公共服务保障", "应急联动处置",
+  "数字政府协同", "数据资源治理", "城市安全韧性", "民生服务提升",
+  "生态环境治理", "交通运行保障", "城市建设管理", "市场监管服务"
+];
+const blockSuffixes = ["运行监测", "指挥调度", "协同处置", "评估复盘"];
+const unitSuffixes = ["受理分析", "任务编排", "执行协同", "成效反馈"];
+const itemSuffixes = ["信息采集", "业务研判", "联动办理", "结果归档"];
+
+function createPanoramaModel() {
+  const nodes = [];
+  const links = [];
+  panoramaLines.forEach((lineName, lineIndex) => {
+    const col = lineIndex % 4;
+    const row = Math.floor(lineIndex / 4);
+    const ox = 180 + col * 1650 + (row % 2) * 150;
+    const oy = 180 + row * 2070 + (col % 2) * 90;
+    const lineId = `line-${lineIndex}`;
+    nodes.push({ id: lineId, parentId: null, level: 0, name: lineName, x: ox, y: oy + 760, width: 196, line: lineName });
+    blockSuffixes.forEach((blockSuffix, blockIndex) => {
+      const blockId = `${lineId}-block-${blockIndex}`;
+      const blockName = `${lineName.slice(0, 4)}·${blockSuffix}`;
+      const blockY = oy + blockIndex * 500 + 160;
+      nodes.push({ id: blockId, parentId: lineId, level: 1, name: blockName, x: ox + 330, y: blockY, width: 180, line: lineName, block: blockName });
+      links.push({ from: lineId, to: blockId });
+      unitSuffixes.forEach((unitSuffix, unitIndex) => {
+        const unitId = `${blockId}-unit-${unitIndex}`;
+        const unitName = `${blockSuffix}${unitSuffix}`;
+        const unitY = blockY - 132 + unitIndex * 88;
+        nodes.push({ id: unitId, parentId: blockId, level: 2, name: unitName, x: ox + 720, y: unitY, width: 188, line: lineName, block: blockName, unit: unitName });
+        links.push({ from: blockId, to: unitId });
+        itemSuffixes.forEach((itemSuffix, itemIndex) => {
+          const itemId = `${unitId}-item-${itemIndex}`;
+          const itemName = `${unitSuffix}${itemSuffix}`;
+          const itemY = unitY - 36 + itemIndex * 24;
+          nodes.push({ id: itemId, parentId: unitId, level: 3, name: itemName, x: ox + 1120, y: itemY, width: 210, line: lineName, block: blockName, unit: unitName, item: itemName });
+          links.push({ from: unitId, to: itemId });
+        });
+      });
+    });
+  });
+  return { nodes, links };
+}
+
+const panoramaModel = createPanoramaModel();
+const panoramaItems = panoramaModel.nodes.filter(node => node.level === 3);
+const panoramaNodeMap = new Map(panoramaModel.nodes.map(node => [node.id, node]));
+const systemNames = ["城市运行一网统管平台", "城市事件协同处置系统", "城市生命线监测平台", "政务数据共享交换平台", "综合指挥调度平台", "公共服务统一门户", "应急资源管理系统", "城市安全风险平台", "生态环境监测系统", "交通运行分析平台", "建设项目监管平台", "市场主体服务平台", "民生诉求办理平台", "视频资源融合平台", "移动协同办公平台", "数据资产管理平台", "统一身份认证平台", "空间信息基础平台", "物联感知接入平台", "城市体征指标平台", "综合执法监管平台", "防汛抗旱指挥系统", "城市部件管理系统", "公共信用信息平台", "项目全生命周期平台", "智能客服平台", "数字档案管理系统", "领导驾驶舱"];
+const projectNames = ["城市运行中枢升级", "一网统管能力提升", "城市生命线二期", "数据治理专项工程", "应急指挥融合工程", "政务服务体验提升", "城市安全感知工程", "生态监测联网工程", "交通态势优化工程", "建设监管数字化工程", "市场监管协同工程", "民生热线智能化工程", "视频资源整合工程", "数据资产运营工程", "物联感知补盲工程", "城市体征指标工程", "防汛调度提升工程", "移动协同建设工程"];
+const diagnosisCategories = ["无系统支撑", "系统冗余", "重复建设", "数据孤岛", "支撑薄弱", "建设滞后"];
+const diagnosisColors = { "无系统支撑": "#ff5f6d", "系统冗余": "#e25aad", "重复建设": "#ff9c4a", "数据孤岛": "#f4c75e", "支撑薄弱": "#7892b8", "建设滞后": "#9a76ff" };
+const panoramaSystems = systemNames.map((name, index) => ({
+  id: `system-${index}`, name, status: ["在用", "在建", "规划中"][index % 3],
+  targetIds: panoramaItems.filter((_, itemIndex) => (itemIndex * 7 + index * 5) % 31 < 5).slice(0, 18 + index % 8).map(node => node.id)
+}));
+const panoramaProjects = projectNames.map((name, index) => ({
+  id: `project-${index}`, name, stage: ["规划", "建设中", "已建成"][index % 3], year: String(2025 + index % 4),
+  targetIds: panoramaItems.filter((_, itemIndex) => (itemIndex * 5 + index * 9) % 37 < 4).slice(0, 16 + index % 9).map(node => node.id)
+}));
+const panoramaDiagnoses = Array.from({ length: 36 }, (_, index) => {
+  const category = diagnosisCategories[index % diagnosisCategories.length];
+  const target = panoramaItems[(index * 19 + 11) % panoramaItems.length];
+  return { id: `diagnosis-${index}`, name: `${target.name}·${category}`, category, severity: ["高", "中", "低"][index % 3], targetIds: [target.id] };
+});
+
+function PanoramaLayerControls({ activeOverlay, filters, setFilters }) {
+  if (!activeOverlay) return null;
+  const current = filters[activeOverlay];
+  const update = patch => setFilters(value => ({ ...value, [activeOverlay]: { ...value[activeOverlay], ...patch } }));
+  const reset = () => setFilters(value => ({ ...value, [activeOverlay]: activeOverlay === "system" ? { mode: "all", status: "", selectedId: "", search: "", onlyMatched: false, strength: true } : activeOverlay === "project" ? { mode: "all", selectedId: "", stage: "", year: "", search: "", onlyMatched: false } : { mode: "all", selectedId: "", category: "", severity: "", search: "", onlyMatched: false } }));
+  if (activeOverlay === "system") return <div className="sidebar-layer-detail system-detail">
+    <input value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索系统名称" />
+    <div className="panel-tabs">{[["all","全部系统"],["status","按状态"]].map(([value,label]) => <button key={value} className={current.mode === value ? "active" : ""} onClick={() => update({ mode: value, status: value === "all" ? "" : current.status })}>{label}</button>)}</div>
+    <div className="panel-chips status-tags">{["在用","在建","规划中"].map(value => <button key={value} className={current.mode === "status" && current.status === value ? "active" : ""} onClick={() => update({ mode: "status", status: current.status === value ? "" : value })}>{value}</button>)}</div>
+    <div className="coverage-level-legend"><span><i className="low" />低</span><span><i className="medium" />中</span><span><i className="high" />高</span></div>
+    <div className="sidebar-detail-footer"><span>28个系统</span><button onClick={reset}>清空</button></div>
+  </div>;
+  if (activeOverlay === "project") return <div className="sidebar-layer-detail project-detail">
+    <div className="panel-tabs">{[["all","全部项目"],["single","单个项目"]].map(([value,label]) => <button key={value} className={current.mode === value ? "active" : ""} onClick={() => update({ mode: value })}>{label}</button>)}</div>
+    {current.mode === "single" && <select value={current.selectedId} onChange={event => update({ selectedId: event.target.value })}><option value="">选择一个项目</option>{panoramaProjects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
+    <div className="panel-chips">{["规划","建设中","已建成"].map(value => <button key={value} className={current.stage === value ? "active" : ""} onClick={() => update({ stage: current.stage === value ? "" : value })}>{value}</button>)}</div>
+    <input value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索项目名称" />
+    <div className="project-legend"><span><i className="planned" />规划</span><span><i className="building" />建设中</span><span><i className="built" />已建成</span></div>
+    <div className="sidebar-detail-footer"><span>18个项目</span><button onClick={reset}>清空</button></div>
+  </div>;
+  return <div className="sidebar-layer-detail diagnosis-detail">
+    <div className="panel-tabs">{[["all","全部问题"],["single","单个问题"]].map(([value,label]) => <button key={value} className={current.mode === value ? "active" : ""} onClick={() => update({ mode: value })}>{label}</button>)}</div>
+    {current.mode === "single" && <select value={current.selectedId} onChange={event => update({ selectedId: event.target.value })}><option value="">选择一个问题</option>{panoramaDiagnoses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
+    <div className="diagnosis-legend">{diagnosisCategories.map(value => <button key={value} className={current.category === value ? "active" : ""} style={{ "--legend-color": diagnosisColors[value] }} onClick={() => update({ category: current.category === value ? "" : value })}><i />{value}<b>{6}</b></button>)}</div>
+    <div className="panel-chips"><small>风险等级</small>{["高","中","低"].map(value => <button key={value} className={current.severity === value ? "active" : ""} onClick={() => update({ severity: current.severity === value ? "" : value })}>{value}</button>)}</div>
+    <input value={current.search} onChange={event => update({ search: event.target.value })} placeholder="搜索问题或业务事项" />
+    <div className="sidebar-detail-footer"><span>36条问题</span><button onClick={reset}>清空</button></div>
+  </div>;
+}
+
+function BusinessSankey({ onSelect }) {
+  const [focusLine, setFocusLine] = useState(null);
+  const colors = ["#22e4ff", "#328cff", "#655dff", "#9b61ff", "#d954ff", "#ff55d8"];
+  const data = panoramaLines.map((name, index) => ({
+    id: `sankey-${index}`,
+    name,
+    blocks: blockSuffixes.map(suffix => `${name.slice(0, 4)}·${suffix}`),
+    units: unitSuffixes.map(suffix => `${suffix}组 · 4单元`),
+    items: itemSuffixes.map(suffix => `${suffix} · 16事项`)
+  }));
+  const ribbon = (x1, y1, x2, y2, width) => {
+    const bend = (x2 - x1) * .48;
+    const half = width / 2;
+    return `M ${x1} ${y1 - half} C ${x1 + bend} ${y1 - half}, ${x2 - bend} ${y2 - half}, ${x2} ${y2 - half} L ${x2} ${y2 + half} C ${x2 - bend} ${y2 + half}, ${x1 + bend} ${y1 + half}, ${x1} ${y1 + half} Z`;
+  };
+  const centerLine = (x1, y1, x2, y2) => { const bend = (x2 - x1) * .48; return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`; };
+  const links = data.flatMap((line, lineIndex) => {
+    const base = 54 + lineIndex * 68;
+    const blockYs = line.blocks.map((_, index) => base + (index - 1.5) * 15);
+    const unitYs = line.units.map((_, index) => base + (index - 1.5) * 15);
+    const itemYs = line.items.map((_, index) => base + (index - 1.5) * 15);
+    const out = [];
+    blockYs.forEach((blockY, blockIndex) => {
+      out.push({ id: `${line.id}-source-${blockIndex}`, lineId: line.id, colorIndex: lineIndex % colors.length, width: 10, d: ribbon(174, base, 306, blockY, 10), center: centerLine(174, base, 306, blockY) });
+      const primaryUnit = unitYs[blockIndex];
+      const crossingUnit = unitYs[(blockIndex + lineIndex % 3 + 1) % unitYs.length];
+      out.push({ id: `${line.id}-block-${blockIndex}`, lineId: line.id, colorIndex: lineIndex % colors.length, width: 7, d: ribbon(454, blockY, 620, primaryUnit, 7), center: centerLine(454, blockY, 620, primaryUnit) });
+      out.push({ id: `${line.id}-cross-${blockIndex}`, lineId: line.id, colorIndex: lineIndex % colors.length, width: 3.5, d: ribbon(454, blockY, 620, crossingUnit, 3.5), center: centerLine(454, blockY, 620, crossingUnit) });
+    });
+    unitYs.forEach((unitY, unitIndex) => {
+      const primaryItem = itemYs[unitIndex];
+      const crossingItem = itemYs[(unitIndex + lineIndex % 2 + 1) % itemYs.length];
+      out.push({ id: `${line.id}-unit-${unitIndex}`, lineId: line.id, colorIndex: lineIndex % colors.length, width: 6, d: ribbon(762, unitY, 938, primaryItem, 6), center: centerLine(762, unitY, 938, primaryItem) });
+      out.push({ id: `${line.id}-item-cross-${unitIndex}`, lineId: line.id, colorIndex: lineIndex % colors.length, width: 2.6, d: ribbon(762, unitY, 938, crossingItem, 2.6), center: centerLine(762, unitY, 938, crossingItem) });
+    });
+    return out;
+  });
+  return <div className="business-sankey">
+    <div className="sankey-heading"><div><small>BUSINESS FLOW INSIGHT</small><b>业务流向洞察</b></div><span>12条主线 · 48个业务板块 · 192个业务单元 · 768个业务事项</span></div>
+    <div className="sankey-columns"><span>业务主线</span><span>业务板块</span><span>业务单元</span><span>业务事项</span></div>
+    <svg viewBox="0 0 1320 840" preserveAspectRatio="xMidYMid meet" onPointerLeave={() => setFocusLine(null)}>
+      <defs>{colors.map((color, index) => <Fragment key={color}><linearGradient id={`sankey-gradient-${index}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor={color} stopOpacity=".84" /><stop offset=".48" stopColor={color} stopOpacity=".4" /><stop offset="1" stopColor={color} stopOpacity=".8" /></linearGradient><filter id={`sankey-glow-${index}`} x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></Fragment>)}</defs>
+      <g className="sankey-links">{links.map(link => <Fragment key={link.id}><path className={`sankey-ribbon ${focusLine && focusLine !== link.lineId ? "muted" : focusLine === link.lineId ? "active" : ""}`} d={link.d} fill={`url(#sankey-gradient-${link.colorIndex})`} filter={`url(#sankey-glow-${link.colorIndex})`} /><path className={`sankey-particle-line particle-${link.colorIndex}`} d={link.center} /></Fragment>)}</g>
+      {data.map((line, lineIndex) => {
+        const color = colors[lineIndex % colors.length];
+        const base = 54 + lineIndex * 68;
+        const blockYs = line.blocks.map((_, index) => base + (index - 1.5) * 15);
+        const unitYs = line.units.map((_, index) => base + (index - 1.5) * 15);
+        const itemYs = line.items.map((_, index) => base + (index - 1.5) * 15);
+        const muted = focusLine && focusLine !== line.id;
+        return <g key={line.id} className={`sankey-branch ${muted ? "muted" : ""}`} onPointerEnter={() => setFocusLine(line.id)} onClick={() => onSelect({ name: line.name, line: line.name })}>
+          <rect x="22" y={base - 24} width="152" height="48" rx="6" fill={color} fillOpacity=".14" stroke={color} strokeWidth="1.2" />
+          <rect x="22" y={base - 24} width="4" height="48" rx="2" fill={color} />
+          <text x="98" y={base + 4} textAnchor="middle" className="sankey-main-name">{line.name}</text>
+          {line.blocks.map((block, blockIndex) => <g key={block}><rect x="306" y={blockYs[blockIndex] - 6.5} width="148" height="13" rx="3" fill={color} fillOpacity=".18" stroke={color} strokeWidth=".9" /><text x="380" y={blockYs[blockIndex] + 3} textAnchor="middle" className="sankey-module-name">{block}</text></g>)}
+          {line.units.map((unit, unitIndex) => <g key={unit}><rect x="620" y={unitYs[unitIndex] - 6.5} width="142" height="13" rx="3" fill="#06142c" stroke={color} strokeWidth=".9" /><text x="691" y={unitYs[unitIndex] + 3} textAnchor="middle" className="sankey-unit-name">{unit}</text></g>)}
+          {line.items.map((item, itemIndex) => <g key={item}><rect x="938" y={itemYs[itemIndex] - 6.5} width="230" height="13" rx="3" fill="#07132b" stroke={color} strokeWidth=".9" /><text x="1053" y={itemYs[itemIndex] + 3} textAnchor="middle" className="sankey-item-name">{item}</text></g>)}
+        </g>;
+      })}
+    </svg>
+    <div className="sankey-tip">悬浮主线聚焦完整流向 · 点击主线查看业务详情</div>
+  </div>;
+}
+
+function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
+  const [canvasMode, setCanvasMode] = useState("panorama");
+  const [businessGranularity, setBusinessGranularity] = useState("item");
+  const [activeOverlay, setActiveOverlay] = useState(null);
+  const [overlayScanRun, setOverlayScanRun] = useState(0);
+  const [overlayScanning, setOverlayScanning] = useState(false);
+  const [controlCollapsed, setControlCollapsed] = useState(false);
+  const [viewPreset, setViewPreset] = useState("oblique");
+  const [camera, setCamera] = useState({ x: 40, y: -120, zoom: .52, yaw: 0, pitch: 8 });
+  const [filters, setFilters] = useState({
+    system: { mode: "all", status: "", selectedId: "", search: "", onlyMatched: false, strength: true },
+    project: { mode: "all", selectedId: "", stage: "", year: "", search: "", onlyMatched: false },
+    diagnosis: { mode: "all", selectedId: "", category: "", severity: "", search: "", onlyMatched: false }
+  });
+  const dragRef = useRef(null);
+  const maxLevel = { block: 1, unit: 2, item: 3 }[businessGranularity];
+  const currentFilter = activeOverlay ? filters[activeOverlay] : null;
+  const activeEntities = useMemo(() => {
+    if (!activeOverlay) return [];
+    const collection = activeOverlay === "system" ? panoramaSystems : activeOverlay === "project" ? panoramaProjects : panoramaDiagnoses;
+    return collection.filter(entity => {
+      if (currentFilter.mode === "single" && currentFilter.selectedId && entity.id !== currentFilter.selectedId) return false;
+      if (activeOverlay === "system" && currentFilter.mode === "status" && currentFilter.status && entity.status !== currentFilter.status) return false;
+      if (activeOverlay === "project" && currentFilter.stage && entity.stage !== currentFilter.stage) return false;
+      if (activeOverlay === "project" && currentFilter.year && entity.year !== currentFilter.year) return false;
+      if (activeOverlay === "diagnosis" && currentFilter.category && entity.category !== currentFilter.category) return false;
+      if (activeOverlay === "diagnosis" && currentFilter.severity && entity.severity !== currentFilter.severity) return false;
+      return !currentFilter.search || entity.name.includes(currentFilter.search);
+    });
+  }, [activeOverlay, currentFilter]);
+  const coverage = useMemo(() => {
+    const counts = new Map();
+    activeEntities.forEach(entity => entity.targetIds.forEach(targetId => {
+      let node = panoramaNodeMap.get(targetId);
+      while (node) {
+        counts.set(node.id, (counts.get(node.id) || 0) + 1);
+        node = node.parentId ? panoramaNodeMap.get(node.parentId) : null;
+      }
+    }));
+    return counts;
+  }, [activeEntities]);
+  const visibleNodes = useMemo(() => {
+    const left = (-camera.x - 520) / camera.zoom;
+    const right = (-camera.x + 2480) / camera.zoom;
+    const top = (-camera.y - 620) / camera.zoom;
+    const bottom = (-camera.y + 1800) / camera.zoom;
+    return panoramaModel.nodes.filter(node => node.level <= maxLevel && node.x > left && node.x < right && node.y > top && node.y < bottom);
+  }, [camera, maxLevel]);
+  const visibleIds = new Set(visibleNodes.map(node => node.id));
+  const visibleLinks = panoramaModel.links.filter(link => visibleIds.has(link.from) && visibleIds.has(link.to) && panoramaNodeMap.get(link.to).level <= maxLevel);
+  const overlayBase = activeOverlay === "system" ? "#53d7ff" : activeOverlay === "project" ? "#9f80ff" : "#ff7081";
+  const scanDelay = worldX => Math.max(.08, Math.min(3.65, ((worldX * camera.zoom + camera.x) / 1500) * 3.65));
+  const systemCoverageTone = count => count >= 5 ? "#ff9847" : count >= 3 ? "#706eff" : "#41c9ff";
+  const wrapCamera = value => ({ ...value, x: value.x > 600 ? value.x - 7200 * value.zoom : value.x < -7200 * value.zoom ? value.x + 7200 * value.zoom : value.x, y: value.y > 600 ? value.y - 6200 * value.zoom : value.y < -6200 * value.zoom ? value.y + 6200 * value.zoom : value.y });
+  const startPan = event => { if (event.button !== 0) return; dragRef.current = { x: event.clientX, y: event.clientY, camera }; event.currentTarget.setPointerCapture(event.pointerId); };
+  const movePan = event => { if (!dragRef.current) return; setCamera(wrapCamera({ ...dragRef.current.camera, x: dragRef.current.camera.x + event.clientX - dragRef.current.x, y: dragRef.current.camera.y + event.clientY - dragRef.current.y })); };
+  const endPan = () => { dragRef.current = null; };
+  const zoom = delta => setCamera(value => ({ ...value, zoom: Math.max(.28, Math.min(1.25, value.zoom + delta)) }));
+  const toggleView = () => { const next = viewPreset === "oblique" ? "top" : "oblique"; setViewPreset(next); setCamera(value => ({ ...value, pitch: next === "top" ? 0 : 8, yaw: 0 })); };
+  const resetView = () => { setViewPreset("oblique"); setCamera({ x: 40, y: -120, zoom: .52, yaw: 0, pitch: 8 }); };
+  const fitView = () => setCamera(value => ({ ...value, x: 40, y: 20, zoom: .28 }));
+  const locateNext = () => {
+    const targetId = activeEntities[0]?.targetIds[0];
+    const target = panoramaNodeMap.get(targetId);
+    if (target) setCamera(value => ({ ...value, x: 820 - target.x * value.zoom, y: 360 - target.y * value.zoom }));
+  };
+  const openNode = node => {
+    const seed = Math.abs(Math.round(node.x + node.y));
+    const relatedSystem = panoramaSystems.find(entity => entity.targetIds.includes(node.id)) || panoramaSystems[seed % panoramaSystems.length] || panoramaSystems[0];
+    const relatedProject = panoramaProjects.find(entity => entity.targetIds.includes(node.id)) || panoramaProjects[seed % panoramaProjects.length] || panoramaProjects[0];
+    const relatedIssue = panoramaDiagnoses.find(entity => entity.targetIds.includes(node.id));
+    setSelected({ type: "business", name: node.name, line: node.line, block: node.block || "全部业务板块", unit: node.unit || "全部业务单元", system: relatedSystem.name, project: relatedProject.name, risk: relatedIssue?.category || "" });
+  };
+  const setPanoramaView = update => {
+    setViewPreset(typeof update === "object" && update.pitch === 0 && update.yaw === 0 ? "top" : "free");
+    setCamera(value => {
+      const current = { yaw: value.yaw, pitch: value.pitch };
+      const next = typeof update === "function" ? update(current) : update;
+      return { ...value, yaw: Math.max(-20, Math.min(20, next.yaw)), pitch: Math.max(0, Math.min(18, Math.abs(next.pitch))) };
+    });
+  };
+  const toggleOverlay = value => {
+    if (canvasMode !== "panorama") setCanvasMode("panorama");
+    if (activeOverlay === value) {
+      setActiveOverlay(null);
+      setOverlayScanning(false);
+      return;
+    }
+    setActiveOverlay(value);
+    setOverlayScanRun(run => run + 1);
+    setOverlayScanning(true);
+  };
+  useEffect(() => {
+    if (!activeOverlay || !overlayScanning) return undefined;
+    const timer = window.setTimeout(() => setOverlayScanning(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [activeOverlay, overlayScanRun, overlayScanning]);
+  const selectLegacyBusiness = payload => setSelected({ type: "business", name: payload.name, line: payload.line || "单位业务全景", block: "业务能力板块", unit: "业务执行单元", system: "城市运行一网统管平台", project: "城市运行中枢升级", risk: "" });
+  return <div className={`unit-panorama canvas-${canvasMode}`}>
+    {controlCollapsed ? <button className="panorama-control-launcher" onClick={() => setControlCollapsed(false)}><i />视图控制</button> : <aside className="panorama-control-sidebar">
+      <div className="sidebar-title"><div><small>VIEW CONTROL</small><h3>视图控制</h3></div><button className="sidebar-collapse" onClick={() => setControlCollapsed(true)} title="收起面板">收起</button></div>
+      <section className="sidebar-section"><div className="sidebar-section-heading"><b>底图视图</b></div><div className="sidebar-segment">{[["panorama","业务树"],["flow","桑基图"],["system","业务矩阵"]].map(([value,label]) => <button key={value} className={canvasMode === value ? "active" : ""} onClick={() => { setCanvasMode(value); setSelected(null); }}>{label}</button>)}</div></section>
+      <section className="sidebar-section overlay-section"><div className="sidebar-section-heading"><b>叠加图层</b><span>单选</span></div>{[["system","系统"],["project","项目"],["diagnosis","诊断"]].map(([value,label]) => <Fragment key={value}><button className={`layer-toggle-row ${canvasMode === "panorama" && activeOverlay === value ? "active" : ""}`} onClick={() => toggleOverlay(value)}><span><i />{label}</span><em /></button>{canvasMode === "panorama" && activeOverlay === value && <PanoramaLayerControls activeOverlay={activeOverlay} filters={filters} setFilters={setFilters} />}</Fragment>)}</section>
+      {canvasMode === "panorama" && <section className="sidebar-section granularity-section"><div className="sidebar-section-heading"><b>展示层级</b></div><div className="sidebar-segment compact">{[["block","板块"],["unit","单元"],["item","事项"]].map(([value,label]) => <button key={value} className={businessGranularity === value ? "active" : ""} onClick={() => setBusinessGranularity(value)}>{label}</button>)}</div></section>}
+    </aside>}
+    {canvasMode === "panorama" && <div className={`panorama-canvas overlay-${activeOverlay || "none"} ${overlayScanning ? "is-overlay-scanning" : ""}`} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onWheel={event => { event.preventDefault(); zoom(event.deltaY < 0 ? .06 : -.06); }}>
+      <div className="panorama-grid" />
+      <div key={`panorama-world-${overlayScanRun}`} className="panorama-world" style={{ transform: `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom}) rotateX(${camera.pitch}deg) rotateZ(${camera.yaw}deg)`, "--overlay-color": overlayBase }}>
+        <svg className="panorama-links" viewBox="0 0 7600 6400" preserveAspectRatio="none">{visibleLinks.map(link => {
+          const from = panoramaNodeMap.get(link.from); const to = panoramaNodeMap.get(link.to); const hit = coverage.has(to.id); const elbow = from.x + (to.x - from.x) * .54;
+          const points = `${from.x + from.width / 2},${from.y} ${elbow},${from.y} ${elbow},${to.y} ${to.x - to.width / 2},${to.y}`;
+          const delay = `${scanDelay(to.x)}s`;
+          return <Fragment key={`${link.from}-${link.to}`}><polyline className={activeOverlay ? hit ? "matched" : "dimmed" : ""} points={points} pathLength="1" style={{ "--scan-delay": delay }} />{activeOverlay && hit && <polyline className="panorama-energy-line" points={points} pathLength="1" style={{ "--scan-delay": delay }} />}</Fragment>;
+        })}</svg>
+        {visibleNodes.map(node => {
+          const hitCount = coverage.get(node.id) || 0;
+          const isDimmed = activeOverlay && !hitCount;
+          const diagnosis = activeOverlay === "diagnosis" ? activeEntities.find(entity => entity.targetIds.includes(node.id)) : null;
+          const tone = activeOverlay === "system" && hitCount ? systemCoverageTone(hitCount) : diagnosis ? diagnosisColors[diagnosis.category] : overlayBase;
+          return <button key={node.id} className={`panorama-node level-${node.level} ${hitCount ? "matched" : ""} ${isDimmed ? "dimmed" : ""} ${currentFilter?.onlyMatched && isDimmed ? "hidden-match" : ""}`} style={{ left: node.x, top: node.y, width: node.width, "--node-overlay": tone, "--coverage": Math.min(1, .34 + hitCount * .13), "--scan-delay": `${scanDelay(node.x) + .35}s` }} onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); openNode(node); }}><i /><span><b>{node.name}</b></span></button>;
+        })}
+      </div>
+      <div className="panorama-scale">缩放 {Math.round(camera.zoom * 100)}% · 拖动画布 / 滚轮缩放</div>
+    </div>}
+    {canvasMode === "flow" && <BusinessSankey onSelect={selectLegacyBusiness} />}
+    {canvasMode === "system" && <SystemTerrain grain="业务事项" onOpenApplication={onOpenApplication} systemView="board" />}
+    {canvasMode === "panorama" && <><ViewController view={{ yaw: camera.yaw, pitch: camera.pitch }} setView={setPanoramaView} /><div className="map-control-stack panorama-map-controls"><button onClick={() => zoom(.08)} title="放大" aria-label="放大">＋</button><button onClick={() => zoom(-.08)} title="缩小" aria-label="缩小">−</button><button onClick={resetView} title="复位" aria-label="复位">↺</button><button className={viewPreset === "oblique" ? "active" : ""} onClick={toggleView} title="倾斜视角" aria-label="倾斜视角">◇</button></div></>}
+  </div>;
 }
 
 function DetailDrawer({ selected, onClose }) {
@@ -819,21 +1194,17 @@ export function App() {
   const [mode, setMode] = useState("city");
   const [hovered, setHovered] = useState(null);
   const [transitioning, setTransitioning] = useState(false);
-  const [activeLayer, setActiveLayer] = useState("业务");
   const [selected, setSelected] = useState(null);
-  const [timeline, setTimeline] = useState("现状");
-  const [lens, setLens] = useState(false);
   const [view, setView] = useState({ yaw: 0, pitch: 0 });
   const [drill, setDrill] = useState(null);
-  const [businessView, setBusinessView] = useState("spatial");
-  const [systemGrain, setSystemGrain] = useState("业务事项");
+  const openApplicationPanorama = data => {
+    setSelected(null);
+    setDrill({ ...data, type: "application" });
+  };
   const enterUnit = () => { setTransitioning(true); setTimeout(() => { setMode("unit"); setTransitioning(false); setSelected(null); }, 680); };
   const back = () => { setTransitioning(true); setTimeout(() => { setMode("city"); setTransitioning(false); setSelected(null); }, 520); };
-  const switchLayer = layer => { setActiveLayer(layer); setSelected(null); };
 
-  const isFlatBusiness = mode === "unit" && activeLayer === "业务" && businessView === "flat";
-
-  return <main className={`app ${mode} ${isFlatBusiness ? "flat-business-view" : ""} ${transitioning ? "transitioning" : ""}`}>
+  return <main className={`app ${mode} ${transitioning ? "transitioning" : ""}`}>
     <ParticleField mode={mode} burst={transitioning} /><div className="aurora aurora-a" /><div className="aurora aurora-b" />
     <header className="topbar">
       <div className="brand-mark"><span /><span /><span /></div><div><div className="eyebrow">JINAN DIGITAL GOVERNANCE</div><h1>数字化诊断全景图</h1></div>
@@ -841,25 +1212,16 @@ export function App() {
     </header>
     <section className="stage">
       {mode === "city" ? <>
-        <div className="city-space" style={{ transform: `perspective(1000px) rotateX(${view.pitch}deg) rotateY(${view.yaw}deg)` }}><CityConnections />
+        <div className="city-space" style={{ transform: `translateZ(-24px) rotateX(${view.pitch}deg) rotateY(${view.yaw}deg)` }}>
+        <div className="universe">{units.map((unit, index) => <button key={unit.id} className={`star-node ${unit.tone} ${hovered === unit.id ? "hovered" : ""}`} style={{ left: `${unit.x}%`, top: `${unit.y}%`, "--size": `${unit.size}px`, "--star-z": `${[72, -18, 46, -38, 28, 90, -8, 52, -54, 36, 64, -26, 18, -68][index]}px`, "--float-delay": `${-index * .7}s`, "--float-range": `${5 + index % 4}px` }} onPointerEnter={() => setHovered(unit.id)} onPointerLeave={() => setHovered(null)} onClick={enterUnit}><span className="orbit orbit-one" /><span className="orbit orbit-two" /><span className="star-core" /><span className="star-label"><b>{unit.name}</b><em>指数 {unit.score}</em></span></button>)}</div></div>
         <div className="intro"><div className="section-no">01 / 全市全景</div><h2>济南市数字化<br /><strong>业务星系</strong></h2><p>以业务为核心，映射单位、系统与项目的支撑关系</p></div>
         <div className="metrics"><div><b>42</b><span>接入单位</span></div><div><b>268</b><span>业务主线</span></div><div><b>1,036</b><span>业务事项</span></div><div><b>82.6%</b><span>数字化覆盖率</span></div></div>
-        <div className="universe">{units.map((unit, index) => <button key={unit.id} className={`star-node ${unit.tone} ${hovered === unit.id ? "hovered" : ""}`} style={{ left: `${unit.x}%`, top: `${unit.y}%`, "--size": `${unit.size}px`, "--float-delay": `${-index * .7}s`, "--float-range": `${5 + index % 4}px` }} onPointerEnter={() => setHovered(unit.id)} onPointerLeave={() => setHovered(null)} onClick={enterUnit}><span className="orbit orbit-one" /><span className="orbit orbit-two" /><span className="star-core" /><span className="star-label"><b>{unit.name}</b><em>指数 {unit.score}</em></span></button>)}</div></div>
         <ViewController view={view} setView={setView} />
-        <div className="legend"><span><i className="dot gold-dot" />重点单位</span><span><i className="dot blue-dot" />市直单位</span><span><i className="line-key" />业务协同关系</span></div><div className="guide">移动鼠标探索 · 点击单位进入全景</div>
+        <div className="legend"><span><i className="dot gold-dot" />重点单位</span><span><i className="dot blue-dot" />市直单位</span></div><div className="guide">移动鼠标探索 · 点击单位进入全景</div>
       </> : <>
         <button className="back-button" onClick={back}>← 返回全市</button>
-        <div className="unit-titlebar"><div><div className="section-no">02 / 单位业务全景</div><h2>济南市城市运行管理局</h2></div><div className="mini-metrics">{isFlatBusiness ? <><span><b>5</b>主线</span><span><b>20</b>板块</span><span><b>40</b>单元</span><span><b>80</b>事项</span></> : <><span><b>4</b>主线</span><span><b>8</b>板块</span><span><b>16</b>单元</span><span><b>32</b>事项</span></>}</div></div>
-        <div className="tree-toolbar">
-          <div className="layers">{["业务","系统","项目","诊断"].map(layer => <button key={layer} className={activeLayer === layer ? "active" : ""} onClick={() => switchLayer(layer)}><i />{layer}</button>)}</div>
-          {activeLayer === "业务" && <div className="business-view-switch"><button className={businessView === "spatial" ? "active" : ""} onClick={() => setBusinessView("spatial")}>空间球图</button><button className={businessView === "flat" ? "active" : ""} onClick={() => setBusinessView("flat")}>平铺流图</button></div>}
-          {activeLayer === "系统" && <div className="grain-switch"><small>底图粒度</small>{grainOrder.map(grain => <button key={grain} className={systemGrain === grain ? "active" : ""} onClick={() => { setSystemGrain(grain); setSelected(null); }}>{grain.replace("业务", "")}</button>)}</div>}
-          <div className="timeline">{["现状","建成后","规划目标"].map(t => <button key={t} className={timeline === t ? "active" : ""} onClick={() => setTimeline(t)}>{t}</button>)}</div>
-          <button className={`lens-button ${lens ? "active" : ""}`} onClick={() => { setLens(!lens); if (!lens) setActiveLayer("诊断"); }}>诊断透镜</button>
-        </div>
-        <BusinessTree activeLayer={activeLayer} selected={selected} setSelected={setSelected} timeline={timeline} lens={lens} view={view} onDrill={setDrill} businessView={businessView} systemGrain={systemGrain} />
-        {activeLayer !== "系统" && !isFlatBusiness && <ViewController view={view} setView={setView} />}
-        {!isFlatBusiness && <div className="tree-hint">点击任一节点查看业务纵向穿透或系统横向剖切</div>}
+        <div className="unit-titlebar"><div><div className="section-no">02 / 单位业务全景</div><h2>济南市城市运行管理局</h2></div><div className="mini-metrics"><span><b>12</b>主线</span><span><b>48</b>板块</span><span><b>192</b>单元</span><span><b>768</b>事项</span></div></div>
+        <UnitBusinessPanorama setSelected={setSelected} onOpenApplication={openApplicationPanorama} />
       </>}
     </section>
     <DetailDrawer selected={selected} onClose={() => setSelected(null)} />
