@@ -21,11 +21,23 @@ const units = [
 ];
 
 const cityBusinessLinks = [
-  { from: "data", to: "transport", bend: -8 }, { from: "city", to: "emergency", bend: 7 },
-  { from: "water", to: "housing", bend: 8 }, { from: "approval", to: "commerce", bend: -7 },
-  { from: "education", to: "health", bend: -5 }, { from: "market", to: "commerce", bend: 6 },
-  { from: "civil", to: "health", bend: -4 }, { from: "transport", to: "emergency", bend: 5 },
-  { from: "housing", to: "water", bend: -6 }, { from: "data", to: "approval", bend: 5 },
+  { from: "city", to: "approval", level: "major", bend: -.025, pulse: true },
+  { from: "city", to: "data", level: "major", bend: .04 },
+  { from: "city", to: "transport", level: "major", bend: -.035, pulse: true },
+  { from: "city", to: "emergency", level: "major", bend: .035 },
+  { from: "city", to: "water", level: "primary", bend: -.025 },
+  { from: "city", to: "housing", level: "primary", bend: .03 },
+  { from: "approval", to: "data", level: "major", bend: -.035, pulse: true },
+  { from: "approval", to: "education", level: "primary", bend: .04 },
+  { from: "approval", to: "market", level: "primary", bend: -.04 },
+  { from: "approval", to: "civil", level: "secondary", bend: .03, dashed: true },
+  { from: "approval", to: "health", level: "distant", bend: -.025, dashed: true },
+  { from: "transport", to: "sports", level: "secondary", bend: .035 },
+  { from: "transport", to: "commerce", level: "primary", bend: -.04 },
+  { from: "water", to: "emergency", level: "secondary", bend: .04 },
+  { from: "water", to: "culture", level: "distant", bend: -.035, dashed: true },
+  { from: "health", to: "commerce", level: "secondary", bend: .03 },
+  { from: "education", to: "civil", level: "secondary", bend: -.03 },
 ];
 
 const tree = [
@@ -96,13 +108,98 @@ function ParticleField({ mode, burst }) {
   return <canvas ref={canvasRef} className={`particle-field ${burst ? "is-bursting" : ""}`} />;
 }
 
-function CityConnections() {
-  return <svg className="connections city-connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    {cityBusinessLinks.map(link => {
-      const from = units.find(unit => unit.id === link.from);
-      const to = units.find(unit => unit.id === link.to);
-      return <line className="business-thread" key={`${link.from}-${link.to}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y} />;
-    })}
+function CityConnections({ hovered }) {
+  const svgRef = useRef(null);
+  const [size, setSize] = useState({ width: 1000, height: 700 });
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return undefined;
+    const updateSize = () => {
+      const bounds = svg.getBoundingClientRect();
+      if (bounds.width && bounds.height) setSize({ width: bounds.width, height: bounds.height });
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, []);
+
+  const nodeGeometry = Object.fromEntries(units.map(unit => [unit.id, {
+    ...unit,
+    cx: unit.x / 100 * size.width,
+    cy: unit.y / 100 * size.height,
+    radius: unit.size * .64,
+  }]));
+  const linkGeometry = (link, index) => {
+    const from = nodeGeometry[link.from];
+    const to = nodeGeometry[link.to];
+    const dx = to.cx - from.cx;
+    const dy = to.cy - from.cy;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    const ux = dx / distance;
+    const uy = dy / distance;
+    const x1 = from.cx + ux * from.radius;
+    const y1 = from.cy + uy * from.radius;
+    const x2 = to.cx - ux * to.radius;
+    const y2 = to.cy - uy * to.radius;
+    const bend = distance * link.bend;
+    const cx = (x1 + x2) / 2 - uy * bend;
+    const cy = (y1 + y2) / 2 + ux * bend;
+    const strength = Math.max(.18, Math.min(.66, .7 - distance / Math.max(size.width, size.height) * .72));
+    const levelBoost = { major: .24, primary: .08, secondary: -.06, distant: -.14 }[link.level] || 0;
+    return {
+      ...link, index, x1, y1, x2, y2, cx, cy, distance,
+      d: `M ${x1.toFixed(2)} ${y1.toFixed(2)} Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${x2.toFixed(2)} ${y2.toFixed(2)}`,
+      opacity: Math.max(.08, Math.min(.72, strength + levelBoost + (index % 4 - 1.5) * .025)),
+      width: ({ major: .95, primary: .76, secondary: .58, distant: .5 }[link.level] || .65) + (index % 3) * .03,
+      related: hovered && (hovered === link.from || hovered === link.to),
+      muted: hovered && hovered !== link.from && hovered !== link.to,
+    };
+  };
+  const links = cityBusinessLinks.map(linkGeometry);
+
+  return <svg ref={svgRef} className={`connections city-connections ${hovered ? "has-focus" : ""}`} viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <filter id="constellation-glow" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+        <feGaussianBlur stdDeviation=".8" result="blur" />
+        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+      </filter>
+      <mask id="constellation-clear-labels" maskUnits="userSpaceOnUse" x="0" y="0" width={size.width} height={size.height}>
+        <rect width={size.width} height={size.height} fill="white" />
+        {Object.values(nodeGeometry).map(node => <Fragment key={node.id}>
+          <circle cx={node.cx} cy={node.cy} r={node.radius - .5} fill="black" />
+          <rect x={node.cx + node.size / 2 + 9} y={node.cy - node.size * .08} width="172" height="36" rx="4" fill="black" />
+        </Fragment>)}
+      </mask>
+      {links.map(link => <linearGradient key={link.index} id={`constellation-gradient-${link.index}`} gradientUnits="userSpaceOnUse" x1={link.x1} y1={link.y1} x2={link.x2} y2={link.y2}>
+        <stop offset="0" stopColor="#d9fbff" stopOpacity={link.level === "major" ? ".96" : ".72"} />
+        <stop offset=".16" stopColor="#63d7ff" stopOpacity=".64" />
+        <stop offset=".5" stopColor="#315cba" stopOpacity={link.level === "distant" ? ".025" : ".1"} />
+        <stop offset=".84" stopColor="#58c9ff" stopOpacity=".58" />
+        <stop offset="1" stopColor="#d9fbff" stopOpacity={link.level === "major" ? ".9" : ".68"} />
+      </linearGradient>)}
+    </defs>
+    <g className="constellation-network" mask="url(#constellation-clear-labels)">
+      {links.map(link => <Fragment key={`${link.from}-${link.to}`}>
+        <path
+          className={`constellation-link ${link.level} ${link.dashed ? "is-dashed" : ""} ${link.related ? "is-related" : ""} ${link.muted ? "is-muted" : ""}`}
+          d={link.d}
+          stroke={`url(#constellation-gradient-${link.index})`}
+          style={{ "--link-opacity": link.opacity, "--link-width": `${link.width}px` }}
+        />
+        {link.pulse && <path
+          className={`constellation-pulse ${link.related ? "is-related" : ""} ${link.muted ? "is-muted" : ""}`}
+          d={link.d}
+          pathLength="1"
+          style={{ "--pulse-duration": `${4.8 + link.index % 4 * .8}s`, "--pulse-delay": `${-1.1 * (link.index + 1)}s` }}
+        />}
+        {(link.level === "major" || link.index % 5 === 0) && <g className={`constellation-anchor-points ${link.related ? "is-related" : ""} ${link.muted ? "is-muted" : ""}`}>
+          <circle cx={link.x1} cy={link.y1} r="1.25" />
+          <circle cx={link.x2} cy={link.y2} r="1.25" />
+        </g>}
+      </Fragment>)}
+    </g>
   </svg>;
 }
 
@@ -1274,6 +1371,7 @@ export function App() {
     <section className="stage">
       {mode === "city" ? <>
         <div className="city-space" style={{ transform: `translateZ(-24px) rotateX(${view.pitch}deg) rotateY(${view.yaw}deg)` }}>
+        <div className="city-constellation-layer"><CityConnections hovered={hovered} /></div>
         <div className="universe">{units.map((unit, index) => <button key={unit.id} className={`star-node ${unit.tone} ${hovered === unit.id ? "hovered" : ""}`} style={{ left: `${unit.x}%`, top: `${unit.y}%`, "--size": `${unit.size}px`, "--star-z": `${[72, -18, 46, -38, 28, 90, -8, 52, -54, 36, 64, -26, 18, -68][index]}px`, "--float-delay": `${-index * .7}s`, "--float-range": `${5 + index % 4}px` }} onPointerEnter={() => setHovered(unit.id)} onPointerLeave={() => setHovered(null)} onClick={enterUnit}><span className="orbit orbit-one" /><span className="orbit orbit-two" /><span className="star-core" /><span className="star-label"><b>{unit.name}</b><em>指数 {unit.score}</em></span></button>)}</div></div>
         <div className="intro"><div className="section-no">01 / 全市全景</div><h2>济南市数字化<br /><strong>业务星系</strong></h2><p>以业务为核心，映射单位、系统与项目的支撑关系</p></div>
         <div className="metrics"><div><b>42</b><span>接入单位</span></div><div><b>268</b><span>业务主线</span></div><div><b>1,036</b><span>业务事项</span></div><div><b>82.6%</b><span>数字化覆盖率</span></div></div>

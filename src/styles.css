@@ -328,15 +328,82 @@ footer { position: absolute; z-index: 30; bottom: 14px; left: 3.2%; right: 3.2%;
 
 .stage { perspective: 1450px; perspective-origin: 58% 49%; }
 .city-space { position: absolute; z-index: 17; inset: 0; transform-style: preserve-3d; transform-origin: 58% 49%; transition: transform .45s cubic-bezier(.2,.72,.2,1); }
-.city-space .city-connections { transform: translateZ(-110px); }
+.city-constellation-layer {
+  position: absolute;
+  z-index: 0;
+  left: 25%;
+  right: 3%;
+  top: 2%;
+  bottom: 4%;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+.city-space .city-connections {
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  opacity: 1;
+  pointer-events: none;
+  transform: translateZ(-110px);
+}
 .city-space .universe { transform-style: preserve-3d; }
-.city-space .star-node { transform: translate(-50%, -50%) translateZ(var(--star-z)); animation: starFloat 8s ease-in-out infinite; animation-delay: var(--float-delay); }
+.city-space .star-node { z-index: 2; transform: translate(-50%, -50%) translateZ(var(--star-z)); animation: starFloat 8s ease-in-out infinite; animation-delay: var(--float-delay); }
 .city-space .star-node:hover, .city-space .star-node.hovered { transform: translate(-50%, -50%) translateZ(calc(var(--star-z) + 24px)) scale(1.3); }
-.connections .business-thread {
-  stroke: rgba(132, 181, 221, .34);
-  stroke-width: .58;
+.constellation-network { transition: opacity .45s ease; }
+.city-connections .constellation-link {
+  fill: none;
+  opacity: var(--link-opacity);
+  stroke-width: var(--link-width);
   stroke-linecap: round;
-  filter: drop-shadow(0 0 2px rgba(84, 137, 205, .2));
+  stroke-dasharray: none;
+  vector-effect: non-scaling-stroke;
+  animation: none;
+  transition: opacity .42s ease, stroke-width .42s ease, filter .42s ease;
+}
+.city-connections .constellation-link.major { filter: url(#constellation-glow); }
+.city-connections .constellation-link.is-dashed {
+  stroke-dasharray: 3 8 1 10;
+  stroke-linecap: round;
+}
+.city-connections .constellation-link.is-related {
+  opacity: 1;
+  stroke-width: 1.05px;
+  filter: url(#constellation-glow) drop-shadow(0 0 3px rgba(71, 195, 255, .45));
+}
+.city-connections .constellation-link.is-muted { opacity: .045; }
+.city-connections .constellation-pulse {
+  fill: none;
+  opacity: .56;
+  stroke: rgba(218, 251, 255, .96);
+  stroke-width: 1.15px;
+  stroke-linecap: round;
+  stroke-dasharray: .018 .982;
+  stroke-dashoffset: 1;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 3px rgba(78, 206, 255, .7));
+  animation: constellationTravel var(--pulse-duration) linear var(--pulse-delay) infinite;
+  transition: opacity .42s ease;
+}
+.city-connections .constellation-pulse.is-related { opacity: .94; }
+.city-connections .constellation-pulse.is-muted { opacity: .02; }
+.city-connections .constellation-anchor-points {
+  fill: rgba(205, 249, 255, .88);
+  opacity: .62;
+  filter: drop-shadow(0 0 3px rgba(63, 200, 255, .82));
+  transition: opacity .42s ease;
+}
+.city-connections .constellation-anchor-points.is-related { opacity: 1; }
+.city-connections .constellation-anchor-points.is-muted { opacity: .05; }
+
+@keyframes constellationTravel {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-connections .constellation-pulse { animation: none; opacity: .18; }
 }
 
 .view-controller { position: absolute; z-index: 42; right: 3.4%; bottom: 8%; width: 112px; padding: 10px; text-align: center; border: 1px solid rgba(93,137,203,.28); background: rgba(6,13,28,.78); backdrop-filter: blur(15px); }
@@ -1217,4 +1284,261 @@ footer { position: absolute; z-index: 30; bottom: 14px; left: 3.2%; right: 3.2%;
   .unit-panorama { inset: 74px 0 0; }
   .panorama-layer-panel { bottom: 13px; transform: scale(.92); transform-origin: right bottom; }
   .panorama-navigation { bottom: 13px; transform: scale(.92); transform-origin: left bottom; }
+}
+
+/* Unit panorama light-field theme: luminous depth instead of a near-black void. */
+.app.unit {
+  background:
+    radial-gradient(ellipse at 52% 46%, rgba(27, 78, 143, .13) 0%, rgba(11, 37, 78, .1) 34%, transparent 65%),
+    radial-gradient(circle at 78% 28%, rgba(74, 58, 178, .07), transparent 36%),
+    radial-gradient(circle at 18% 72%, rgba(0, 130, 175, .05), transparent 40%),
+    linear-gradient(135deg, #01040b 0%, #030a16 46%, #06091c 72%, #02050e 100%);
+}
+.app.unit::after {
+  background:
+    linear-gradient(90deg, rgba(5, 20, 43, .34), transparent 18%, transparent 82%, rgba(5, 16, 37, .24)),
+    linear-gradient(180deg, rgba(8, 20, 43, .12), transparent 24%, transparent 78%, rgba(5, 14, 31, .2));
+  box-shadow: inset 0 0 90px rgba(23, 89, 163, .14);
+}
+.app.unit .aurora { opacity: .1; filter: blur(96px) saturate(1.1); }
+.app.unit .aurora-a { width: 560px; height: 340px; left: 28%; top: 24%; background: #236dff; }
+.app.unit .aurora-b { width: 430px; height: 350px; right: 4%; bottom: 2%; background: #15c5e8; }
+
+.unit-panorama { isolation: isolate; }
+.panorama-canvas {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 47% 44%, rgba(28, 82, 150, .13) 0%, rgba(12, 39, 87, .08) 35%, transparent 67%),
+    radial-gradient(circle at 72% 25%, rgba(88, 65, 198, .065), transparent 39%),
+    radial-gradient(circle at 24% 75%, rgba(0, 143, 189, .045), transparent 38%),
+    linear-gradient(135deg, rgba(1, 6, 15, .95), rgba(3, 10, 24, .92) 48%, rgba(5, 7, 21, .95));
+}
+.panorama-canvas::before,
+.panorama-canvas::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+.panorama-canvas::before {
+  z-index: 0;
+  inset: -14%;
+  background:
+    radial-gradient(ellipse at 52% 52%, transparent 0 25%, rgba(78, 190, 255, .09) 39%, transparent 58%),
+    conic-gradient(from 208deg at 54% 48%, transparent 0 12%, rgba(95, 93, 255, .1) 16%, transparent 22% 48%, rgba(49, 215, 255, .08) 54%, transparent 61%);
+  filter: blur(15px) saturate(1.15);
+  animation: panoramaNebulaDrift 16s ease-in-out infinite alternate;
+}
+.panorama-canvas::after {
+  z-index: 1;
+  inset: 0;
+  opacity: .72;
+  background:
+    radial-gradient(circle at 4% 17%, rgba(120,202,249,.72) 0 .8px, transparent 1.5px),
+    radial-gradient(circle at 9% 71%, rgba(80,142,198,.5) 0 .7px, transparent 1.3px),
+    radial-gradient(circle at 14% 36%, rgba(108,94,218,.58) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 19% 88%, rgba(126,207,250,.58) 0 .8px, transparent 1.4px),
+    radial-gradient(circle at 23% 9%, rgba(72,133,188,.48) 0 .7px, transparent 1.3px),
+    radial-gradient(circle at 28% 61%, rgba(160,221,255,.76) 0 1px, rgba(62,145,216,.18) 1.6px 3px, transparent 4.5px),
+    radial-gradient(circle at 32% 27%, rgba(83,156,211,.46) 0 .7px, transparent 1.25px),
+    radial-gradient(circle at 37% 79%, rgba(105,91,224,.55) 0 .9px, transparent 1.6px),
+    radial-gradient(circle at 41% 13%, rgba(122,205,250,.66) 0 .8px, transparent 1.45px),
+    radial-gradient(circle at 46% 48%, rgba(73,132,185,.42) 0 .7px, transparent 1.25px),
+    radial-gradient(circle at 51% 91%, rgba(149,216,253,.68) 0 .9px, transparent 1.5px),
+    radial-gradient(circle at 55% 32%, rgba(103,90,218,.48) 0 .8px, transparent 1.45px),
+    radial-gradient(circle at 59% 69%, rgba(97,180,232,.56) 0 .8px, transparent 1.4px),
+    radial-gradient(circle at 63% 8%, rgba(165,225,255,.82) 0 1px, rgba(65,151,225,.2) 1.6px 3.2px, transparent 4.8px),
+    radial-gradient(circle at 67% 53%, rgba(68,129,185,.44) 0 .7px, transparent 1.3px),
+    radial-gradient(circle at 71% 84%, rgba(111,97,226,.52) 0 .9px, transparent 1.5px),
+    radial-gradient(circle at 75% 22%, rgba(109,192,240,.62) 0 .8px, transparent 1.4px),
+    radial-gradient(circle at 79% 64%, rgba(74,136,190,.44) 0 .7px, transparent 1.25px),
+    radial-gradient(circle at 83% 7%, rgba(117,101,229,.56) 0 .9px, transparent 1.55px),
+    radial-gradient(circle at 86% 43%, rgba(157,219,252,.72) 0 1px, rgba(62,142,210,.17) 1.7px 3px, transparent 4.6px),
+    radial-gradient(circle at 89% 92%, rgba(81,151,205,.48) 0 .7px, transparent 1.3px),
+    radial-gradient(circle at 92% 28%, rgba(120,202,247,.62) 0 .8px, transparent 1.45px),
+    radial-gradient(circle at 95% 74%, rgba(104,91,215,.5) 0 .8px, transparent 1.5px),
+    radial-gradient(circle at 97% 12%, rgba(73,134,188,.42) 0 .7px, transparent 1.25px),
+    radial-gradient(circle at 12% 55%, rgba(150,214,251,.64) 0 .9px, transparent 1.5px),
+    radial-gradient(circle at 35% 94%, rgba(72,132,185,.45) 0 .7px, transparent 1.3px),
+    radial-gradient(circle at 57% 17%, rgba(128,110,231,.48) 0 .8px, transparent 1.45px),
+    radial-gradient(circle at 73% 39%, rgba(93,173,225,.52) 0 .8px, transparent 1.4px),
+    radial-gradient(circle at 82% 78%, rgba(138,208,246,.6) 0 .9px, transparent 1.55px);
+  mask-image: radial-gradient(ellipse at 50% 48%, black 12%, rgba(0,0,0,.86) 58%, transparent 98%);
+  box-shadow: none;
+  animation: irregularStarTwinkle 6.8s ease-in-out infinite alternate;
+}
+.panorama-grid {
+  display: none;
+}
+.panorama-world { z-index: 3; }
+.panorama-links polyline {
+  stroke: rgba(126, 188, 229, .58);
+  stroke-width: 1.25;
+  filter: drop-shadow(0 0 2px rgba(64, 178, 239, .2));
+}
+
+.panorama-canvas.overlay-none .panorama-node {
+  border-color: rgba(112, 221, 255, .82);
+  background:
+    linear-gradient(112deg, rgba(255,255,255,.12), transparent 31%),
+    linear-gradient(180deg, rgba(25, 105, 164, .98), rgba(10, 45, 91, .98));
+  box-shadow:
+    inset 0 1px 0 rgba(232, 253, 255, .55),
+    inset 0 -12px 20px rgba(0, 17, 52, .25),
+    inset 0 0 22px rgba(55, 203, 255, .16),
+    0 4px 0 rgba(4, 26, 66, .72),
+    0 0 16px rgba(49, 193, 255, .18),
+    0 10px 24px rgba(0, 12, 35, .26);
+}
+.panorama-canvas.overlay-none .panorama-node.level-0 { background: linear-gradient(180deg, rgba(37, 126, 183, .99), rgba(13, 56, 105, .99)); }
+.panorama-canvas.overlay-none .panorama-node.level-1 { background: linear-gradient(180deg, rgba(31, 116, 177, .98), rgba(11, 50, 99, .99)); }
+.panorama-canvas.overlay-none .panorama-node.level-2 { background: linear-gradient(180deg, rgba(25, 105, 166, .98), rgba(9, 44, 91, .99)); }
+.panorama-canvas.overlay-none .panorama-node.level-3 { background: linear-gradient(180deg, rgba(20, 96, 157, .97), rgba(8, 39, 83, .99)); }
+.panorama-canvas.overlay-none .panorama-node:hover {
+  filter: brightness(1.24) saturate(1.18);
+  border-color: rgba(222, 251, 255, .96);
+  box-shadow: inset 0 1px 0 #fff, inset 0 0 26px rgba(90, 221, 255, .26), 0 0 12px rgba(123, 233, 255, .66), 0 0 34px rgba(65, 141, 255, .38), 0 13px 28px rgba(0, 16, 45, .32);
+}
+
+.unit-titlebar h2 { text-shadow: 0 0 14px rgba(120, 218, 255, .34), 0 0 36px rgba(77, 112, 255, .22); }
+.unit .mini-metrics {
+  padding: 7px 12px;
+  border: 1px solid rgba(157, 225, 255, .16);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(28, 74, 117, .26), rgba(21, 36, 77, .18));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 26px rgba(42, 178, 255, .08);
+  backdrop-filter: blur(8px);
+}
+
+@keyframes panoramaNebulaDrift {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); opacity: .72; }
+  to { transform: translate3d(2%, 1.5%, 0) scale(1.06); opacity: 1; }
+}
+@keyframes irregularStarTwinkle {
+  from { opacity: .52; filter: brightness(.82); }
+  to { opacity: .78; filter: brightness(1.12); }
+}
+
+/* Lighter tool glass and a compact lower-left controller. */
+.panorama-control-cluster {
+  transform: scale(.78);
+  transform-origin: left bottom;
+  background: linear-gradient(145deg, rgba(42, 61, 88, .9), rgba(9, 20, 38, .86));
+  border-color: rgba(207, 246, 255, .58);
+  box-shadow: 0 12px 30px rgba(2, 29, 69, .26), 0 0 28px rgba(42, 198, 255, .2), inset 0 1px 0 rgba(255,255,255,.34), inset 0 0 0 1px rgba(255,255,255,.1);
+}
+.panorama-control-cluster .view-controller {
+  background: rgba(255,255,255,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 18px rgba(75, 200, 255, .08);
+}
+.panorama-control-cluster .view-controller .joystick {
+  background: radial-gradient(circle, rgba(51,89,145,.2), rgba(5,11,25,.8));
+  border-color: rgba(215, 247, 255, .56);
+}
+.panorama-control-cluster .panorama-map-controls button {
+  background: rgba(255,255,255,.09);
+  border-color: rgba(225, 250, 255, .46);
+}
+
+.panorama-control-sidebar {
+  background: linear-gradient(145deg, rgba(40,55,78,.86), rgba(8,18,34,.8));
+  border-color: rgba(213, 247, 255, .56);
+  box-shadow: 0 18px 50px rgba(2, 27, 66, .3), 0 0 30px rgba(38, 188, 255, .2), inset 0 1px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.08);
+  backdrop-filter: blur(24px) saturate(1.28);
+  -webkit-backdrop-filter: blur(24px) saturate(1.28);
+}
+.panorama-control-sidebar .sidebar-segment { background: rgba(15,23,42,.54); }
+.panorama-control-sidebar .granularity-section .sidebar-segment { background: rgba(5,14,28,.5); }
+.panorama-control-sidebar .sidebar-layer-detail { background: rgba(8,19,35,.42); }
+.panorama-control-sidebar .sidebar-layer-detail .panel-tabs { background: rgba(5,14,28,.34); }
+.panorama-control-sidebar .business-filter-section .sidebar-search input,
+.panorama-control-sidebar .system-detail > select { background: rgba(6,16,31,.42); }
+.panorama-control-sidebar .layer-toggle-row {
+  border-color: rgba(219, 245, 255, .11);
+}
+
+/* Business-tree cards: staggered prism light, bright edges and breathing depth. */
+.panorama-canvas.overlay-none .panorama-node {
+  --card-lumen: #4fdcff;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 8% 16%, color-mix(in srgb, var(--card-lumen) 30%, transparent), transparent 34%),
+    linear-gradient(112deg, rgba(73,191,255,.09), transparent 28% 68%, rgba(111,93,255,.11)),
+    linear-gradient(180deg, rgba(24, 92, 151, .98), rgba(7, 35, 79, .99));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--card-lumen) 64%, white),
+    inset 1px 0 0 color-mix(in srgb, var(--card-lumen) 34%, transparent),
+    inset -1px 0 0 rgba(126,111,255,.24),
+    inset 0 -12px 20px rgba(0, 13, 46, .38),
+    inset 0 0 20px color-mix(in srgb, var(--card-lumen) 12%, transparent),
+    0 4px 0 rgba(3, 22, 61, .78),
+    0 0 10px color-mix(in srgb, var(--card-lumen) 14%, transparent),
+    0 9px 22px rgba(0, 9, 35, .3);
+  animation: businessCardLumen 5.8s ease-in-out infinite;
+  animation-delay: calc(var(--scan-delay, 0s) * -1.35);
+}
+.panorama-canvas.overlay-none .panorama-node.level-0 { --card-lumen: #6cecff; }
+.panorama-canvas.overlay-none .panorama-node.level-1 { --card-lumen: #45c9ff; }
+.panorama-canvas.overlay-none .panorama-node.level-2 { --card-lumen: #668cff; }
+.panorama-canvas.overlay-none .panorama-node.level-3 { --card-lumen: #42d8ff; }
+.panorama-canvas.overlay-none .panorama-node > i,
+.panorama-canvas.overlay-none .panorama-node > span { position: relative; z-index: 3; }
+.panorama-canvas.overlay-none .panorama-node > i {
+  background: var(--card-lumen);
+  box-shadow: 0 0 7px var(--card-lumen), 0 0 16px color-mix(in srgb, var(--card-lumen) 44%, transparent);
+  animation: businessIndicatorPulse 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--scan-delay, 0s) * -.9);
+}
+.panorama-canvas.overlay-none .panorama-node::before {
+  z-index: 2;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--card-lumen) 72%, white) 18%, #fff 48%, rgba(120,103,255,.72) 78%, transparent);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--card-lumen) 55%, transparent);
+  animation: businessEdgeFlicker 5.8s ease-in-out infinite;
+  animation-delay: calc(var(--scan-delay, 0s) * -1.35);
+}
+.panorama-canvas.overlay-none .panorama-node::after {
+  display: none;
+  opacity: 0;
+  background: none;
+  animation: none;
+}
+.panorama-canvas.overlay-none .panorama-links polyline {
+  stroke: rgba(116, 197, 244, .62);
+  filter: drop-shadow(0 0 2px rgba(67, 194, 255, .36));
+  animation: businessLinkLumen 5.2s ease-in-out infinite;
+  animation-delay: calc(var(--scan-delay, 0s) * -1.2);
+}
+.panorama-canvas.overlay-none .panorama-node:hover {
+  animation-play-state: paused;
+  filter: brightness(1.32) saturate(1.24);
+  border-color: rgba(233, 253, 255, .98);
+  box-shadow: inset 0 1px 0 #fff, inset 0 0 28px color-mix(in srgb, var(--card-lumen) 28%, transparent), 0 0 10px rgba(212,250,255,.84), 0 0 30px color-mix(in srgb, var(--card-lumen) 58%, transparent), 0 0 54px rgba(104,83,255,.25), 0 14px 30px rgba(0,12,42,.34);
+}
+
+@keyframes businessCardLumen {
+  0%, 16%, 100% { filter: brightness(.88) saturate(.96); border-color: color-mix(in srgb, var(--card-lumen) 42%, rgba(152,215,255,.42)); }
+  28% { filter: brightness(1.16) saturate(1.22); border-color: color-mix(in srgb, var(--card-lumen) 82%, white); }
+  42%, 72% { filter: brightness(1.02) saturate(1.06); border-color: color-mix(in srgb, var(--card-lumen) 58%, rgba(180,230,255,.5)); }
+  82% { filter: brightness(1.1) saturate(1.16); border-color: color-mix(in srgb, var(--card-lumen) 72%, white); }
+}
+@keyframes businessPrismSweep {
+  0%, 17% { left: -78%; opacity: 0; }
+  21% { opacity: .9; }
+  38% { left: 122%; opacity: 0; }
+  100% { left: 122%; opacity: 0; }
+}
+@keyframes businessEdgeFlicker {
+  0%, 18%, 100% { opacity: .38; }
+  27% { opacity: 1; }
+  34% { opacity: .56; }
+  80% { opacity: .82; }
+}
+@keyframes businessIndicatorPulse {
+  0%, 100% { opacity: .72; transform: scaleY(.82); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+@keyframes businessLinkLumen {
+  0%, 100% { opacity: .46; }
+  48% { opacity: .86; }
+  58% { opacity: .6; }
 }
