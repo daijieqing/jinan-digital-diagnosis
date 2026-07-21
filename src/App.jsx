@@ -788,7 +788,7 @@ function SystemBusinessTree({ grain, scanPhase, scanRun, sliceTarget, setSliceTa
 }
 
 
-function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = "" }) {
+function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = "", showMetrics = true }) {
   const depth = grainOrder.indexOf(grain);
   const businessQuery = businessSearch.trim().toLowerCase();
   const [terrainView, setTerrainView] = useState({ yaw: 0, pitch: 0 });
@@ -879,7 +879,7 @@ function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = 
       {businessQuery && <div className={`matrix-filter-status ${matchedBusinessCount ? "" : "empty"}`}><small>业务筛选</small><b>{matchedBusinessCount ? `已定位 ${matchedBusinessCount} 个业务节点` : "未找到匹配业务"}</b><span>{businessSearch}</span></div>}
       {sliceTarget && <HolographicStack target={sliceTarget} onClose={() => setSliceTarget(null)} onOpenApplication={onOpenApplication} />}
     </div> : <div className="system-tree-stage" style={{ transform: `translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}><SystemBusinessTree grain={grain} scanPhase={scanPhase} scanRun={scanRun} sliceTarget={sliceTarget} setSliceTarget={setSliceTarget} onOpenApplication={onOpenApplication} /></div>}
-    <aside className="grid-metric-panel">{[["4","主线","梳理核心业务线"],["8","板块","系统功能分类"],["16","单位","业务责任单位"],["32","事项","诊断追踪点"]].map(([value,label,tip]) => <div key={label}><i /><b>{value}</b><span>{label}</span><small>{tip}</small></div>)}</aside>
+    {showMetrics && <aside className="grid-metric-panel">{[["4","主线","梳理核心业务线"],["8","板块","系统功能分类"],["16","单位","业务责任单位"],["32","事项","诊断追踪点"]].map(([value,label,tip]) => <div key={label}><i /><b>{value}</b><span>{label}</span><small>{tip}</small></div>)}</aside>}
     <aside className="grid-legend"><small>数据密度图例<br /><em>DATA DENSITY LEGEND</em></small><span><i className="legend-high" />高密度</span><span><i className="legend-medium" />中密度</span><span><i className="legend-low" />低密度</span></aside>
     <aside className="grid-density"><small>系统覆盖度</small><div className="density-ring"><b>78%</b></div><p><span>低密度</span><i style={{ width: "68%" }} />68%</p><p><span>中密度</span><i style={{ width: "24%" }} />24%</p><p><span>高密度</span><i style={{ width: "8%" }} />8%</p></aside>
     <ViewController view={terrainView} setView={setTerrainView} />
@@ -1249,7 +1249,7 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
   const selectLegacyBusiness = payload => setSelected({ type: "business", name: payload.name, line: payload.line || "单位业务全景", block: "业务能力板块", unit: "业务执行单元", system: "城市运行一网统管平台", project: "城市运行中枢升级", risk: "" });
   return <div className={`unit-panorama canvas-${canvasMode}`}>
     {controlCollapsed ? <button className="panorama-control-launcher" onClick={() => setControlCollapsed(false)}><i />视图控制</button> : <aside className="panorama-control-sidebar">
-      <div className="sidebar-title"><div><small>VIEW CONTROL</small><h3>视图控制</h3></div><button className="sidebar-collapse" onClick={() => setControlCollapsed(true)} title="收起面板">收起</button></div>
+      <div className="sidebar-title"><div><h3>视图控制</h3></div><button className="sidebar-collapse" onClick={() => setControlCollapsed(true)} title="收起面板">收起</button></div>
       <section className="sidebar-section"><div className="sidebar-section-heading"><b>底图视图</b></div><div className="sidebar-segment">{[["panorama","业务树"],["flow","桑基图"],["system","业务矩阵"]].map(([value,label]) => <button key={value} className={canvasMode === value ? "active" : ""} onClick={() => { setCanvasMode(value); setSelected(null); }}>{label}</button>)}</div></section>
       {(canvasMode === "panorama" || canvasMode === "system") && <section className="sidebar-section granularity-section"><div className="sidebar-section-heading"><b>展示层级</b><span>{canvasMode === "system" ? "矩阵粒度" : "节点粒度"}</span></div><div className="sidebar-segment compact">{[["block","板块"],["unit","单元"],["item","事项"]].map(([value,label]) => <button key={value} className={businessGranularity === value ? "active" : ""} onClick={() => setBusinessGranularity(value)}>{label}</button>)}</div></section>}
       {(canvasMode === "panorama" || canvasMode === "system") && <section className="sidebar-section business-filter-section"><div className="sidebar-section-heading"><b>业务筛选</b><span>{businessQuery ? canvasMode === "system" ? "矩阵内定位" : `${businessMatches?.size || 0} 个节点` : "模糊匹配"}</span></div><label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索板块、单元或事项" value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} placeholder="搜索板块 / 单元 / 事项" /></label>{businessQuery && <button className="business-filter-clear" onClick={() => setBusinessSearch("")}>清空业务筛选</button>}</section>}
@@ -1289,7 +1289,7 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
       <div className="panorama-scale">缩放 {Math.round(camera.zoom * 100)}% · 拖动画布 / 滚轮缩放</div>
     </div>}
     {canvasMode === "flow" && <BusinessSankey onSelect={selectLegacyBusiness} />}
-    {canvasMode === "system" && <SystemTerrain grain={{ block: "业务板块", unit: "业务单元", item: "业务事项" }[businessGranularity]} businessSearch={businessSearch} onOpenApplication={onOpenApplication} systemView="board" />}
+    {canvasMode === "system" && <SystemTerrain grain={{ block: "业务板块", unit: "业务单元", item: "业务事项" }[businessGranularity]} businessSearch={businessSearch} showMetrics={false} onOpenApplication={onOpenApplication} systemView="board" />}
     {canvasMode === "panorama" && <div className="panorama-control-cluster"><ViewController view={{ yaw: camera.yaw, pitch: camera.pitch }} setView={setPanoramaView} /><div className="map-control-stack panorama-map-controls"><button onClick={() => zoom(.08)} title="放大" aria-label="放大">＋</button><button onClick={() => zoom(-.08)} title="缩小" aria-label="缩小">−</button><button onClick={resetView} title="复位" aria-label="复位">↺</button><button className={viewPreset === "oblique" ? "active" : ""} onClick={toggleView} title="倾斜视角" aria-label="倾斜视角">◇</button></div></div>}
   </div>;
 }
