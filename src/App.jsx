@@ -108,6 +108,7 @@ function ParticleField({ mode, burst }) {
   return <canvas ref={canvasRef} className={`particle-field ${burst ? "is-bursting" : ""}`} />;
 }
 
+
 function CityConnections({ hovered }) {
   const svgRef = useRef(null);
   const [size, setSize] = useState({ width: 1000, height: 700 });
@@ -786,8 +787,10 @@ function SystemBusinessTree({ grain, scanPhase, scanRun, sliceTarget, setSliceTa
   </div>;
 }
 
-function SystemTerrain({ grain, onOpenApplication, systemView }) {
+
+function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = "" }) {
   const depth = grainOrder.indexOf(grain);
+  const businessQuery = businessSearch.trim().toLowerCase();
   const [terrainView, setTerrainView] = useState({ yaw: 0, pitch: 0 });
   const [terrainZoom, setTerrainZoom] = useState(1);
   const [sliceTarget, setSliceTarget] = useState(null);
@@ -816,7 +819,7 @@ function SystemTerrain({ grain, onOpenApplication, systemView }) {
     const corner = (row < 1 || row > 14) && (column < 2 || column > 17);
     const target = targetList[(row * 3 + column * 5 + depth) % targetList.length];
     const density = getDensity(row, column, depth);
-    return { id: `${row}-${column}`, row, column, target, density, corner };
+    return { id: `${row}-${column}`, row, column, target, density, corner, businessMatch: !businessQuery || target.name.toLowerCase().includes(businessQuery) };
   }).filter(cell => !cell.corner);
   const waveColumns = 28, waveRows = 20;
   const waveCells = Array.from({ length: waveColumns * waveRows }, (_, index) => {
@@ -829,6 +832,7 @@ function SystemTerrain({ grain, onOpenApplication, systemView }) {
   const interactiveCells = cells.map(cell => ({
     ...cell.target,
     id: `grid-${cell.id}`,
+    targetId: cell.target.id,
     cellId: cell.id,
     row: cell.row,
     column: cell.column,
@@ -836,8 +840,10 @@ function SystemTerrain({ grain, onOpenApplication, systemView }) {
     anchorY: 13 + (cell.row + .5) / rows * 74,
     density: cell.density === "empty" ? "low" : cell.density,
     systems: [...new Set([...cell.target.systems, ...demoSystems])].slice(0, 4),
+    businessMatch: cell.businessMatch,
   }));
-  useEffect(() => setSliceTarget(null), [grain]);
+  const matchedBusinessCount = new Set(interactiveCells.filter(cell => cell.businessMatch).map(cell => cell.targetId)).size;
+  useEffect(() => setSliceTarget(null), [grain, businessQuery]);
   useEffect(() => {
     let frame = 0;
     const startedAt = performance.now();
@@ -862,14 +868,15 @@ function SystemTerrain({ grain, onOpenApplication, systemView }) {
   }} onPointerMove={moveTerrain} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null} onWheel={event => {
     event.preventDefault(); setTerrainZoom(value => Math.max(.72, Math.min(1.45, value - event.deltaY * .001)));
   }}>
-    {systemView === "board" ? <div className={`system-basemap phase-${scanPhase}`} style={{ transform: `translate(-50%, -50%) translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}>
+    {systemView === "board" ? <div className={`system-basemap phase-${scanPhase} ${businessQuery ? "has-business-filter" : ""}`} style={{ transform: `translate(-50%, -50%) translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}>
       <img className="system-basemap-image system-basemap-image-empty" src={systemSupportBasemapEmpty} alt="业务支撑空态底图" draggable="false" />
       <img className="system-basemap-image system-basemap-image-final" src={systemSupportBasemap} alt="业务支撑密度底图" draggable="false" />
       <img className="system-basemap-image system-basemap-image-ridge" src={systemSupportBasemap} alt="" draggable="false" />
       <BasemapRevealTimeline runKey={`${grain}-${scanRun}`} onPhaseChange={setScanPhase} />
       <div className="system-basemap-hitmap" aria-label="可交互业务矩阵">
-        {interactiveCells.map(cell => <div key={cell.id} className="system-basemap-hitcell" style={{ gridColumn: cell.column + 1, gridRow: cell.row + 1, "--node-color": holographicTone[cell.density] }}><button aria-label={`查看${cell.name}`} className={sliceTarget?.id === cell.id ? "selected" : ""} onClick={() => setSliceTarget(current => current?.id === cell.id ? null : cell)} /><span>{cell.name}</span></div>)}
+        {interactiveCells.map(cell => <div key={cell.id} className={`system-basemap-hitcell ${cell.businessMatch ? "business-match" : "business-filter-dimmed"}`} style={{ gridColumn: cell.column + 1, gridRow: cell.row + 1, "--node-color": holographicTone[cell.density] }}><button aria-label={`查看${cell.name}`} className={sliceTarget?.id === cell.id ? "selected" : ""} disabled={!cell.businessMatch} onClick={() => setSliceTarget(current => current?.id === cell.id ? null : cell)} /><span>{cell.name}</span></div>)}
       </div>
+      {businessQuery && <div className={`matrix-filter-status ${matchedBusinessCount ? "" : "empty"}`}><small>业务筛选</small><b>{matchedBusinessCount ? `已定位 ${matchedBusinessCount} 个业务节点` : "未找到匹配业务"}</b><span>{businessSearch}</span></div>}
       {sliceTarget && <HolographicStack target={sliceTarget} onClose={() => setSliceTarget(null)} onOpenApplication={onOpenApplication} />}
     </div> : <div className="system-tree-stage" style={{ transform: `translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}><SystemBusinessTree grain={grain} scanPhase={scanPhase} scanRun={scanRun} sliceTarget={sliceTarget} setSliceTarget={setSliceTarget} onOpenApplication={onOpenApplication} /></div>}
     <aside className="grid-metric-panel">{[["4","主线","梳理核心业务线"],["8","板块","系统功能分类"],["16","单位","业务责任单位"],["32","事项","诊断追踪点"]].map(([value,label,tip]) => <div key={label}><i /><b>{value}</b><span>{label}</span><small>{tip}</small></div>)}</aside>
@@ -982,7 +989,7 @@ const panoramaNodeMap = new Map(panoramaModel.nodes.map(node => [node.id, node])
 const systemNames = ["城市运行一网统管平台", "城市事件协同处置系统", "城市生命线监测平台", "政务数据共享交换平台", "综合指挥调度平台", "公共服务统一门户", "应急资源管理系统", "城市安全风险平台", "生态环境监测系统", "交通运行分析平台", "建设项目监管平台", "市场主体服务平台", "民生诉求办理平台", "视频资源融合平台", "移动协同办公平台", "数据资产管理平台", "统一身份认证平台", "空间信息基础平台", "物联感知接入平台", "城市体征指标平台", "综合执法监管平台", "防汛抗旱指挥系统", "城市部件管理系统", "公共信用信息平台", "项目全生命周期平台", "智能客服平台", "数字档案管理系统", "领导驾驶舱"];
 const projectNames = ["城市运行中枢升级", "一网统管能力提升", "城市生命线二期", "数据治理专项工程", "应急指挥融合工程", "政务服务体验提升", "城市安全感知工程", "生态监测联网工程", "交通态势优化工程", "建设监管数字化工程", "市场监管协同工程", "民生热线智能化工程", "视频资源整合工程", "数据资产运营工程", "物联感知补盲工程", "城市体征指标工程", "防汛调度提升工程", "移动协同建设工程"];
 const diagnosisCategories = ["无系统支撑", "系统冗余"];
-const diagnosisColors = { "无系统支撑": "#ff5f6d", "系统冗余": "#e25aad" };
+const diagnosisColors = { "无系统支撑": "#ff9f43", "系统冗余": "#8b7cff" };
 const panoramaSystems = systemNames.map((name, index) => ({
   id: `system-${index}`, name, status: ["在用", "在建", "规划中"][index % 3], kind: index % 2 ? "系统" : "平台", buildTime: `${2022 + index % 4}年${String(3 + index % 8).padStart(2, "0")}月`, systemType: ["业务协同", "数据支撑", "运行监测", "综合管理"][index % 4], owner: ["运行监测处", "数据资源处", "指挥调度处"][index % 3],
   targetIds: panoramaItems.filter((_, itemIndex) => (itemIndex * 7 + index * 5) % 31 < 5).slice(0, 18 + index % 8).map(node => node.id)
@@ -1094,6 +1101,7 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
   const [businessSearch, setBusinessSearch] = useState("");
   const [activeOverlay, setActiveOverlay] = useState(null);
   const [systemSupport, setSystemSupport] = useState(null);
+  const [projectNotice, setProjectNotice] = useState(null);
   const [overlayScanRun, setOverlayScanRun] = useState(0);
   const [overlayScanning, setOverlayScanning] = useState(false);
   const [controlCollapsed, setControlCollapsed] = useState(false);
@@ -1199,6 +1207,11 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
       });
       return;
     }
+    if (activeOverlay === "project") {
+      setSelected(null);
+      setProjectNotice(node.name);
+      return;
+    }
     const seed = Math.abs(Math.round(node.x + node.y));
     const relatedSystem = panoramaSystems.find(entity => entity.targetIds.includes(node.id)) || panoramaSystems[seed % panoramaSystems.length] || panoramaSystems[0];
     const relatedProject = panoramaProjects.find(entity => entity.targetIds.includes(node.id)) || panoramaProjects[seed % panoramaProjects.length] || panoramaProjects[0];
@@ -1218,11 +1231,13 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
     if (activeOverlay === value) {
       setActiveOverlay(null);
       setSystemSupport(null);
+      setProjectNotice(null);
       setOverlayScanning(false);
       return;
     }
     setActiveOverlay(value);
     setSystemSupport(null);
+    setProjectNotice(null);
     setOverlayScanRun(run => run + 1);
     setOverlayScanning(true);
   };
@@ -1230,14 +1245,14 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
     if (!activeOverlay || !overlayScanning) return undefined;
     const timer = window.setTimeout(() => setOverlayScanning(false), 5000);
     return () => window.clearTimeout(timer);
-  }, [activeOverlay, overlayScanRun, overlayScanning]);
+  }, [activeOverlay, overlayScanRun]);
   const selectLegacyBusiness = payload => setSelected({ type: "business", name: payload.name, line: payload.line || "单位业务全景", block: "业务能力板块", unit: "业务执行单元", system: "城市运行一网统管平台", project: "城市运行中枢升级", risk: "" });
   return <div className={`unit-panorama canvas-${canvasMode}`}>
     {controlCollapsed ? <button className="panorama-control-launcher" onClick={() => setControlCollapsed(false)}><i />视图控制</button> : <aside className="panorama-control-sidebar">
       <div className="sidebar-title"><div><small>VIEW CONTROL</small><h3>视图控制</h3></div><button className="sidebar-collapse" onClick={() => setControlCollapsed(true)} title="收起面板">收起</button></div>
       <section className="sidebar-section"><div className="sidebar-section-heading"><b>底图视图</b></div><div className="sidebar-segment">{[["panorama","业务树"],["flow","桑基图"],["system","业务矩阵"]].map(([value,label]) => <button key={value} className={canvasMode === value ? "active" : ""} onClick={() => { setCanvasMode(value); setSelected(null); }}>{label}</button>)}</div></section>
-      {canvasMode === "panorama" && <section className="sidebar-section granularity-section"><div className="sidebar-section-heading"><b>展示层级</b></div><div className="sidebar-segment compact">{[["block","板块"],["unit","单元"],["item","事项"]].map(([value,label]) => <button key={value} className={businessGranularity === value ? "active" : ""} onClick={() => setBusinessGranularity(value)}>{label}</button>)}</div></section>}
-      {canvasMode === "panorama" && <section className="sidebar-section business-filter-section"><div className="sidebar-section-heading"><b>业务筛选</b><span>{businessQuery ? `${businessMatches?.size || 0} 个节点` : "模糊匹配"}</span></div><label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索板块、单元或事项" value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} placeholder="搜索板块 / 单元 / 事项" /></label>{businessQuery && <button className="business-filter-clear" onClick={() => setBusinessSearch("")}>清空业务筛选</button>}</section>}
+      {(canvasMode === "panorama" || canvasMode === "system") && <section className="sidebar-section granularity-section"><div className="sidebar-section-heading"><b>展示层级</b><span>{canvasMode === "system" ? "矩阵粒度" : "节点粒度"}</span></div><div className="sidebar-segment compact">{[["block","板块"],["unit","单元"],["item","事项"]].map(([value,label]) => <button key={value} className={businessGranularity === value ? "active" : ""} onClick={() => setBusinessGranularity(value)}>{label}</button>)}</div></section>}
+      {(canvasMode === "panorama" || canvasMode === "system") && <section className="sidebar-section business-filter-section"><div className="sidebar-section-heading"><b>业务筛选</b><span>{businessQuery ? canvasMode === "system" ? "矩阵内定位" : `${businessMatches?.size || 0} 个节点` : "模糊匹配"}</span></div><label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索板块、单元或事项" value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} placeholder="搜索板块 / 单元 / 事项" /></label>{businessQuery && <button className="business-filter-clear" onClick={() => setBusinessSearch("")}>清空业务筛选</button>}</section>}
       <section className="sidebar-section overlay-section"><div className="sidebar-section-heading"><b>叠加图层</b><span>单选</span></div>{[["system","系统"],["project","项目"],["diagnosis","诊断"]].map(([value,label]) => <Fragment key={value}><button className={`layer-toggle-row ${canvasMode === "panorama" && activeOverlay === value ? "active" : ""}`} onClick={() => toggleOverlay(value)}><span><i />{label}</span><em /></button>{canvasMode === "panorama" && activeOverlay === value && <PanoramaLayerControls activeOverlay={activeOverlay} filters={filters} setFilters={setFilters} />}</Fragment>)}</section>
     </aside>}
     {canvasMode === "panorama" && <div className={`panorama-canvas overlay-${activeOverlay || "none"} ${overlayScanning ? "is-overlay-scanning" : ""}`} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onWheel={event => { event.preventDefault(); zoom(event.deltaY < 0 ? .06 : -.06); }}>
@@ -1270,10 +1285,11 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
         onClose={() => setSystemSupport(null)}
         onOpenApplication={onOpenApplication}
       />}
+      {activeOverlay === "project" && projectNotice && <div className="project-profile-notice" role="status"><div><small>PROJECT PROFILE</small><b>项目画像暂未开发</b><span>已选择业务：{projectNotice}</span></div><button aria-label="关闭提示" onClick={event => { event.stopPropagation(); setProjectNotice(null); }}>×</button></div>}
       <div className="panorama-scale">缩放 {Math.round(camera.zoom * 100)}% · 拖动画布 / 滚轮缩放</div>
     </div>}
     {canvasMode === "flow" && <BusinessSankey onSelect={selectLegacyBusiness} />}
-    {canvasMode === "system" && <SystemTerrain grain="业务事项" onOpenApplication={onOpenApplication} systemView="board" />}
+    {canvasMode === "system" && <SystemTerrain grain={{ block: "业务板块", unit: "业务单元", item: "业务事项" }[businessGranularity]} businessSearch={businessSearch} onOpenApplication={onOpenApplication} systemView="board" />}
     {canvasMode === "panorama" && <div className="panorama-control-cluster"><ViewController view={{ yaw: camera.yaw, pitch: camera.pitch }} setView={setPanoramaView} /><div className="map-control-stack panorama-map-controls"><button onClick={() => zoom(.08)} title="放大" aria-label="放大">＋</button><button onClick={() => zoom(-.08)} title="缩小" aria-label="缩小">−</button><button onClick={resetView} title="复位" aria-label="复位">↺</button><button className={viewPreset === "oblique" ? "active" : ""} onClick={toggleView} title="倾斜视角" aria-label="倾斜视角">◇</button></div></div>}
   </div>;
 }
