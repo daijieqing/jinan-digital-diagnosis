@@ -44,6 +44,8 @@ Do not show a regular grid on the unit-panorama basemap. Use a sparse, non-repea
 
 The unit panorama interaction controls use a compact, ornate floating glass panel in the lower-right with basemap tabs, overlay switches, and inline expandable filters. It has a one-click collapse state that leaves a small glowing launcher. All panel text uses white as its hue; hierarchy is expressed only through opacity, while cyan/violet are reserved for non-text highlights and glow. The system filter expansion omits only-covered and coverage-strength actions and shows low/medium/high using the actual cyan-blue, blue-violet, and amber-orange colors. Keep the circular perspective controller in the lower-left, with the compact zoom/reset/tilt button stack beside it.
 
+Pure business-tree nodes use the earlier technical HUD panel with a dark-blue glass plate, luminous cyan/white frame, calibration ticks, side markers, and directional chevrons. Remove the large concentric energy halo behind the panel, but preserve the other technical ornaments, live labels, staggered reveal, frame breathing, indicator pulse, and connector luminance; do not reintroduce a flat rectangular card treatment.
+
 The overlay filter interaction keeps three compact system modes: 全部系统, 按状态 (在用 / 在建 / 规划中), and 单个系统 with a direct system selector. Place 展示层级 immediately below 底图视图, before overlay filters, using a compact segmented control.
 
 System coverage strength 高 / 中 / 低 is an explanatory legend anchored on the left side of the business canvas, not inside the right operation panel.

@@ -41,6 +41,203 @@
 
 final result: passed
 
+## 2026-07-22 业务矩阵系统图层开关复核
+
+- 纯业务底图：`D:\codex\济南数字化诊断\原型项目\qa-matrix-business-base-only.png`
+- 系统图层待扫描：`D:\codex\济南数字化诊断\原型项目\qa-matrix-system-overlay-idle.png`
+- 系统图层扫描中：`D:\codex\济南数字化诊断\原型项目\qa-matrix-system-overlay-running.png`
+- 系统图层完成：`D:\codex\济南数字化诊断\原型项目\qa-matrix-system-overlay-settled.png`
+- 开关对比：`D:\codex\济南数字化诊断\原型项目\qa-matrix-system-overlay-comparison.png`
+- Viewport: 1280 × 720 CSS px。
+
+**Findings**
+
+- 进入业务矩阵明细时默认关闭系统图层，底盘显示 320 个蓝色事项色块和 20 个业务单元边界。
+- 关闭状态不加载系统密度图、扫描动效、密度图例、命中热区及系统明细内容，保持纯业务底图。
+- 在业务矩阵内点击“系统”不会跳回业务树；控制面板自动收起，系统扫描从左向右重新播放。
+- 系统图层打开后恢复现有彩色密度、扫描光效、图例、交互热区与系统内容。
+- 再次关闭“系统”后立即恢复全蓝底图，系统图片与图例数量均归零。
+- 页面构建通过，浏览器控制台无 error / warn。
+
+final result: passed
+
+## 2026-07-22 Previous HUD card rollback without outer halo
+
+- Source visual truth: `D:\codex\济南数字化诊断\原型项目\src\assets\business-node-hud-no-ring.png`
+- Original card reference: `D:\codex\济南数字化诊断\原型项目\src\assets\business-node-hud.png`
+- Implementation screenshot: `D:\codex\济南数字化诊断\原型项目\business-tree-hud-no-ring-final.png`
+- Zoomed implementation screenshot: `D:\codex\济南数字化诊断\原型项目\business-tree-hud-no-ring-zoomed.png`
+- Full-view comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-tree-hud-no-ring-comparison.png`
+- Focused comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-tree-hud-no-ring-focused-comparison.png`
+- Source pixels: 2109 x 745. Implementation pixels / browser viewport: 988 x 732. Images were fitted proportionally in the comparison without density stretching.
+- State: 单位全景 / 业务树 / 事项粒度 / 无叠加图层 / 52% default zoom; supplementary 68% zoom and 系统 overlay checks.
+
+**Findings**
+
+- No actionable P0/P1/P2 differences remain for the requested rollback scope.
+- Fonts and typography: live Chinese labels, white hierarchy, truncation, weights, and hit areas remain unchanged above the bitmap.
+- Spacing and layout rhythm: the previous HUD plate dimensions and pseudo-element overscan were restored, preserving tree coordinates and connector routing.
+- Colors and visual tokens: the earlier deep-blue glass, cyan/white frame, calibration ticks, arrows, side markers, and luminous highlights are restored.
+- Image quality and asset fidelity: the large concentric circular halo is absent, while the technical panel ornaments remain sharp at default and zoomed states. The RGBA asset has transparent corners and no green fringe.
+- Copy and content: no business names, metrics, filters, or hierarchy labels changed.
+- Motion and interactions: the previous staggered reveal, frame breathing, indicator pulse, connector luminance, hover, and overlay behavior are restored; only the removed halo is no longer animated.
+
+**Comparison History**
+
+1. [P1] The interim elongated asymmetric frame replaced too much of the accepted previous card language.
+2. Fix: restored the previous HUD treatment and generated a precise edited asset that removes only the large outer halo.
+3. Post-fix full and focused evidence confirms the earlier ticks, chevrons, markers, grid, glow, and card proportions are present without a surrounding circle.
+
+**Primary Interactions Tested**
+
+- [x] Entered 单位全景 and rendered the pure-business HUD tree.
+- [x] Collapsed and reopened the view-control panel.
+- [x] Changed zoom from 52% to 68% and restored 52%.
+- [x] Enabled the 系统 overlay scan and returned to `overlay-none`.
+- [x] Confirmed the computed bitmap URL points to `business-node-hud-no-ring.png`.
+- [x] Production build completed successfully.
+
+**Open Questions**
+
+- None for the requested rollback and halo-removal scope.
+
+final result: passed
+
+## 2026-07-22 Business-tree calm elongated frame review
+
+- Source visual truth: `C:\Users\46415\AppData\Local\Temp\codex-clipboard-56964474-a17f-4897-9ca5-6c9a9f8aa72d.png`
+- Generated project asset: `D:\codex\济南数字化诊断\原型项目\src\assets\business-node-frame-v2.png`
+- Default implementation screenshot: `D:\codex\济南数字化诊断\原型项目\business-tree-frame-v2-final.png`
+- Zoomed implementation screenshot: `D:\codex\济南数字化诊断\原型项目\business-tree-frame-v2-zoomed.png`
+- Full-view comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-tree-frame-v2-comparison.png`
+- Focused comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-tree-frame-v2-focus-comparison.png`
+- Source pixels: 1200 x 394. Implementation pixels / browser viewport: 988 x 732. The full comparison fits each image proportionally without stretching; the focused comparison enlarges a 620 x 430 implementation crop to inspect the frame silhouette and dense item nodes.
+- State: 单位全景 / 业务树 / 事项粒度 / 无叠加图层 / 52% default zoom; supplementary check at 68% zoom and with the 系统 overlay.
+
+**Findings**
+
+- No actionable P0/P1/P2 differences remain for the requested frame-replacement scope.
+- Typography: all existing live Chinese labels, truncation rules, white hierarchy, and hit areas remain unchanged above the generated frame asset.
+- Spacing and layout: the new silhouette is visually wider through horizontal asset fitting and restrained pseudo-element overscan; tree coordinates, hierarchy spacing, and connector routing remain intact.
+- Colors and visual tokens: the frame uses a quiet deep-navy center, electric-blue/cyan double outline, chamfered corners, one top rail, and one lower rail/dot. It remains integrated with the existing blue-black star field.
+- Image quality: the reusable RGBA asset has transparent outer corners and contains no embedded copy, numbers, logos, watermarks, grids, rings, ticks, chevrons, or scattered marks.
+- Motion: the previous multi-part halo and indicator loops were removed. Nodes now use only a short staggered reveal and a low-amplitude opacity breath on the frame; hover adds a restrained local highlight.
+- Overlay compatibility: the frame is limited to `overlay-none`; the existing system overlay material still takes over when selected and returns cleanly to the pure-business frame.
+
+**Comparison History**
+
+1. [P2] The previous HUD asset introduced rings, ticks, arrows, and peripheral ornaments that became visually noisy across 399 nodes.
+2. Fix: generated a clean elongated asymmetric frame, removed the busy halo treatment, widened the fitted silhouette, and reduced animation to opacity-only breathing.
+3. Post-fix full and focused evidence shows cleaner centers, clearer business labels, and a calmer dense tree while retaining a recognizable technical frame.
+
+**Primary Interactions Tested**
+
+- [x] Entered 单位全景 from the city overview and rendered 399 business nodes.
+- [x] Collapsed and reopened the view-control panel.
+- [x] Changed zoom from 52% to 68% and restored 52%.
+- [x] Enabled the 系统 overlay, observed the overlay scan state, and restored `overlay-none`.
+- [x] Confirmed the new bitmap URL is applied in computed styles.
+- [x] Production build completed successfully.
+
+**Open Questions**
+
+- None for the requested frame and motion scope.
+
+final result: passed
+
+## 2026-07-22 业务树 HUD 卡片底板复核
+
+- Source visual truth path: `C:\Users\46415\AppData\Local\Temp\codex-clipboard-3de9502b-6512-4cfd-aa5b-7c0ed30047e5.png`
+- Generated project asset: `D:\codex\济南数字化诊断\原型项目\src\assets\business-node-hud.png`
+- Implementation screenshot path: `D:\codex\济南数字化诊断\原型项目\business-tree-hud-implementation.png`
+- Zoomed implementation screenshot: `D:\codex\济南数字化诊断\原型项目\business-tree-hud-zoomed.png`
+- Full-view comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-tree-hud-comparison.png`
+- Focused region comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-tree-hud-focused-comparison.png`
+- Viewport: 1280 × 720 CSS px; deviceScaleFactor 1.
+- Source pixels: 6188 × 2408. Implementation pixels: 1280 × 720. The source was proportionally fitted into a 1280 × 720 comparison cell without stretching. The focused comparison uses a 3220 × 1280 source crop and a 685 × 580 implementation crop from the 76% zoom state, each proportionally fitted to its comparison cell.
+- State: 单位全景 / 业务树 / 事项粒度 / 无叠加图层 / 默认 52% 缩放；补充检查 76% 缩放与系统叠加状态。
+
+**Findings**
+
+- No actionable P0/P1/P2 differences remain for the requested card-style scope. The previous plain rectangular panel now uses a real reusable bitmap asset carrying the reference's luminous frame, calibration ticks, directional chevrons, side markers and concentric energy halo.
+- Fonts and typography: existing Chinese labels, weights, truncation behavior and pure-white hierarchy are preserved above the bitmap. The quiet dark center keeps labels readable at both 52% and 76% zoom.
+- Spacing and layout rhythm: node coordinates, widths, business hierarchy and connector routing are unchanged. The decorative halo is allowed to extend outside the button box without changing hit areas or forcing nearby nodes to reflow.
+- Colors and visual tokens: deep navy glass, electric blue, cyan and cool-white highlights match the reference while remaining consistent with the existing star-field palette. Lower levels use reduced asset opacity to protect dense item-level readability.
+- Image quality and asset fidelity: the project uses `business-node-hud.png`, an RGBA asset derived from the supplied visual language. It preserves real raster ticks, chevrons, glow and ring texture instead of approximating them with CSS drawings. Transparent corners and clean alpha edges were verified.
+- Copy and content: no business names, counts, filters or hierarchy labels changed. The bitmap contains no embedded text, logo, number or watermark.
+- Motion and interaction: nodes reveal in a short stagger, then use low-amplitude halo breathing, indicator pulsing and connector luminance. Hover/focus pauses the halo loop and concentrates brightness. Reduced-motion preferences disable the decorative loops.
+
+**Comparison History**
+
+1. [P2] Initial business nodes read as uniformly filled rectangular cards and lacked the reference's surrounding energy halo, ticks, arrows and technical frame details.
+2. Fix: generated and integrated a reusable transparent HUD panel bitmap, removed the flat base fill in the pure-business state, layered live labels above it, and tuned opacity per hierarchy level.
+3. Post-fix evidence: full-view and 76% focused comparisons show recognizable reference motifs while preserving the existing dense business-tree layout and text readability.
+
+**Primary Interactions Tested**
+
+- [x] Switched from the city overview to 单位全景 and rendered 399 business nodes.
+- [x] Verified the HUD asset is applied only in the pure-business state.
+- [x] Enabled the 系统 overlay and verified 203 matched nodes use the existing overlay material instead of the HUD bitmap; switched back successfully.
+- [x] Used the zoom controls from 52% to 76% and back to 52%.
+- [x] Checked browser console errors and warnings: none.
+- [x] Production build completed successfully.
+
+**Open Questions**
+
+- None for the requested card-style and motion scope.
+
+**Implementation Checklist**
+
+- [x] Replace plain node backgrounds with the supplied HUD visual language.
+- [x] Preserve live labels and current business hierarchy.
+- [x] Keep overlay crystal styles independent from the pure-business HUD skin.
+- [x] Add staggered reveal, breathing halo, indicator pulse and reduced-motion handling.
+- [x] Verify default and zoomed states in the in-app browser.
+
+**Follow-up Polish**
+
+- P3: the smallest item-level nodes intentionally simplify the reference's micro-ticks at default 52% zoom; the full ornament set becomes clearer after zooming in.
+
+final result: passed
+
+## 2026-07-22 业务矩阵无限画布复核
+
+- Source visual truth: `D:\codex\济南数字化诊断\原型项目\business-tree-canvas-source.png`
+- Implementation screenshot: `D:\codex\济南数字化诊断\原型项目\business-matrix-infinite-canvas.png`
+- Full-view comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-matrix-canvas-comparison.png`
+- Focused region evidence: `D:\codex\济南数字化诊断\原型项目\business-matrix-unit-boundaries.png`
+- Viewport: 1280 × 720 CSS px，deviceScaleFactor 1。
+- Source pixels: 1280 × 720；implementation pixels: 1280 × 720；无需密度归一化。
+- State: 单位全景 / 业务矩阵 / 板块矩阵空间；局部证据为进入“运行监测与分析”板块后的业务单元边界。
+
+**Findings**
+
+- 无 P0/P1/P2 差异。矩阵总览已继承业务树的开放式空间、暗色网格、自由拖拽和缩放关系，8 个矩阵改为独立画布节点，不再使用卡片容器。
+- 字体与排版：沿用现有单位全景字体、标题层级和说明文字；矩阵名称在默认视角下可读，缩放后保持一致层级。
+- 间距与布局节奏：8 个矩阵采用上下错位分布，默认视角同时呈现全部节点；右侧视图控制仍固定在画布上层。
+- 色彩与视觉标记：沿用青、蓝、紫、橙的矩阵密度配色；明细层四个业务单元分别使用高亮青、紫、蓝、橙边界。
+- 图片与图形质量：矩阵格子、边界和发光在 1280 × 720 下清晰，无模糊拉伸或透明边缘问题。
+- 文案内容：明确表达“一个矩阵代表一个业务板块”“业务单元”和“业务事项”的层级关系。
+
+**Comparison History**
+
+1. 用户反馈原总览采用 8 张固定卡片，缺少业务树式无限画布感；明细边界线因线宽过细且等待扫描结束才显示，形成 P1 可见性问题。
+2. 移除卡片背景与外框，将 8 个矩阵改为独立空间节点，并增加自由拖拽、滚轮缩放和复位。
+3. 将单元边界改为 2.6px 主亮线与 9px 发光底线，进入板块后立即可见；复核截图中四组边界清晰。
+4. 最终对比无可执行的 P0/P1/P2 问题。
+
+**Primary Interactions Tested**
+
+- [x] 点击矩阵进入板块明细。
+- [x] 拖动画布后坐标发生变化。
+- [x] 放大控制将缩放比例从 0.38 调整到 0.47。
+- [x] 明细层展示 4 个业务单元及对应事项数量。
+- [x] 浏览器控制台无 error / warn。
+- [x] 页面构建通过。
+
+final result: passed
+
+
 ## 2026-07-16 首页星图式空间关系连线
 
 - Source visual truth: `C:\Users\46415\AppData\Local\Temp\codex-clipboard-097165f7-401c-4939-8274-0c41eae9cc41.png`
@@ -333,5 +530,190 @@ final result: passed
 - [x] 点击系统卡片进入应用全景图。
 - [x] 点击图内“返回上一页”回到系统棋盘。
 - [x] 页面构建通过，浏览器无当前运行错误。
+
+final result: passed
+
+## 2026-07-22 业务矩阵透视与连续画布完整复核
+
+- Source visual truth: `C:\Users\46415\AppData\Local\Temp\codex-clipboard-7861e02d-004e-46b2-9886-47e74008f3e9.png`
+- Initial audit evidence: `D:\codex\济南数字化诊断\原型项目\audit-01-current-matrix-overview.png`、`D:\codex\济南数字化诊断\原型项目\audit-02-current-unit-boundaries.png`
+- Implementation overview: `D:\codex\济南数字化诊断\原型项目\qa-final-overview-1280.png`
+- Implementation detail: `D:\codex\济南数字化诊断\原型项目\qa-final-detail-settled-1280.png`
+- Extended-canvas state: `D:\codex\济南数字化诊断\原型项目\audit-06-extended-canvas-state.png`
+- Full-view comparison evidence: `D:\codex\济南数字化诊断\原型项目\qa-reference-vs-final-detail.png`
+- Before/after comparison evidence: `D:\codex\济南数字化诊断\原型项目\qa-before-after-overview.png`、`D:\codex\济南数字化诊断\原型项目\qa-before-after-detail.png`
+- Viewports: 1280 × 720、1024 × 768、1600 × 900 CSS px；deviceScaleFactor 1。
+- Source pixels: 768 × 513；primary implementation pixels: 1280 × 720。完整对照图将两侧分别等比装入 768 × 513 画布，未拉伸原图。
+- State: 单位全景 / 业务矩阵总览；进入“运行监测与分析”后的扫描完成明细。
+
+**Findings**
+
+- 无剩余 P0/P1/P2 问题。
+- 字体与排版：继续沿用单位全景既有字体、字号层级、中文业务名称和英文空间标签；1024、1280、1600 三档视口无标题截断或标签越界。
+- 间距与布局：总览世界尺寸扩展到 5400 × 3800，默认只展示部分矩阵，拖动后可发现更外围板块；8 个矩阵不再挤成固定卡片阵列。
+- 色彩与视觉标记：总览直接复用 `system-support-basemap.png`，格子密度、青蓝底座、紫色与橙色高亮和细线路纹理与明细底盘一致。
+- 图像质量：不再用 CSS 简化格子模拟矩阵；每个板块矩阵使用同一真实底盘图像，并按菱形台面裁切，避免黑色矩形背景。
+- 业务单元边界：分组路径采用 2048 × 1365 底盘坐标，在同一菱形透视平面内沿网格方向投影；4 个业务单元和事项数量均可见。
+- 文案内容：总览明确说明“8 个独立板块分布于连续画布 · 拖动向外探索”，明细保留板块、业务单元和事项层级。
+- 控件避让：进入板块明细时自动收起右侧视图控制面板，仅保留入口按钮，分组边界和标签不再被面板遮挡；返回总览后恢复控制面板。
+
+**Comparison History**
+
+1. [P1] 初始亮线框使用 20 × 16 的屏幕矩形覆盖在菱形透视底盘上，边界与格子方向不一致。
+2. [P1] 初始总览用 10 × 10 CSS 格子模拟矩阵，和目标底盘的密度、厚度、线路及光效不同。
+3. [P1] 初始 8 个矩阵一次性挤在固定视域内，缺少持续向外探索的空间关系。
+4. [P2] 右侧视图控制面板遮挡明细右侧业务单元及标签。
+5. 修正后：边界改用底盘原始坐标投影；总览改用真实底盘资产；世界画布扩展并验证拖动位移；明细自动收起侧栏。
+6. 最终对比和多视口复核未发现可执行的 P0/P1/P2 问题。
+
+**Primary Interactions Tested**
+
+- [x] 8 个矩阵均存在并使用同一底盘资产。
+- [x] 拖动画布：位移由 `(36, 28)` 变化到 `(-334, -302)`，可发现外围矩阵。
+- [x] 鼠标定位缩放：比例由 `0.28` 变化到 `0.335`，复位恢复 `0.28`。
+- [x] 业务筛选“风险预警研判”：匹配 1 / 8，其余 7 个矩阵弱化。
+- [x] 点击矩阵进入明细，4 个业务单元边界在扫描前后均可见。
+- [x] 扫描完成后密度格子、分组线和标签同时完整显示。
+- [x] 1024 × 768、1280 × 720、1600 × 900 视口下无标签越界。
+- [x] 浏览器控制台无 error / warn。
+- [x] 页面构建通过。
+
+**Follow-up Polish**
+
+- [P3] 画布平移目前以鼠标或触控拖动为主；放大、缩小、复位支持键盘聚焦，但未单独提供键盘方向平移按钮。
+
+final result: passed
+
+## 2026-07-22 业务矩阵缩放聚拢与八分区复核
+
+- Overview evidence: `D:\codex\济南数字化诊断\原型项目\qa-matrix-overview-compact-1280.png`
+- Minimum zoom evidence: `D:\codex\济南数字化诊断\原型项目\qa-matrix-overview-minzoom-1280.png`
+- Final detail evidence: `D:\codex\济南数字化诊断\原型项目\qa-final-matrix-8regions.png`
+- Viewport: 1280 × 720 CSS px。
+
+**Findings**
+
+- 总览缩放不再只等比缩小矩阵：缩放比例由 `0.28` 降到 `0.18` 时，首排卡片宽度由约 `257.6px` 降到 `165.6px`，相邻空隙由约 `25.2px` 进一步压缩到 `10.8px`，矩阵会主动聚拢。
+- 放大到 `0.36` 时，相邻空隙恢复到约 `41.0px`，空间关系随缩放连续变化。
+- 每个板块现在包含 8 个业务单元；明细中对应 8 个不规则透视分区，轮廓均沿底盘格线方向投影。
+- 8 个分区边界统一为亮蓝色 `rgb(82, 221, 255)`，不再使用多色区分。
+- 8 个业务单元标签无互相重叠；每个分区显示 1–2 个事项，未出现空分区。
+- 浏览器日志无 error / warn，页面构建通过。
+
+final result: passed
+
+## 2026-07-22 业务单元星河光边复核
+
+- Source visual truth: `C:\Users\46415\AppData\Local\Temp\codex-clipboard-af4f5a5b-5e78-41a2-9c0e-968741a3e5be.png`
+- Implementation screenshot: `D:\codex\济南数字化诊断\原型项目\qa-matrix-tech-glow-final.png`
+- Full-view integration evidence: `D:\codex\济南数字化诊断\原型项目\qa-matrix-tech-glow-final.png`
+- Focused side-by-side comparison: `D:\codex\济南数字化诊断\原型项目\qa-matrix-tech-glow-comparison-final.png`
+- Source pixels: 258 × 150；implementation pixels / CSS viewport: 1280 × 720；deviceScaleFactor 1。参考图为局部光边，不包含可对齐的完整页面，因此聚焦对照按同一视觉尺寸放大参考局部并裁切实现区域。
+- State: 单位全景 / 业务矩阵 / 运行监测与分析 / 扫描完成。
+
+**Findings**
+
+- 无剩余 P0/P1/P2 问题。
+- 字体与排版：沿用现有业务单元标签层级；8 个名称和事项数量均可见，标签之间无重叠。
+- 间距与布局：8 个业务单元改为散布在底盘上的紧凑不规则格群，不再把整块底盘切成 8 个大区；每组分别包含 `15 / 16 / 17 / 15 / 17 / 16 / 16 / 19` 个连续方格，满足每单元 10–20 格的目标。
+- 色彩与视觉标记：边界采用亮青色细芯、蓝色柔光晕和白色移动星点三层效果，色相与参考图底座边缘的蓝青辉光一致。
+- 图像质量：边界主线为 `0.7px`，硬边明显弱于上一版；外发光使用低透明度软晕，不形成粗实线或大面积发白。
+- 文案内容：业务单元名称、事项数量和 8 单元统计保持不变。
+- 交互与运行：星点沿边界持续缓慢流动；页面构建通过，浏览器控制台无 error / warn。
+
+**Comparison History**
+
+1. [P1] 上一版把底盘完整分割为 8 个大区域，每个区域覆盖约 40 个方格，不符合“一个单元 10–20 格”的业务表达。
+2. [P2] 上一版边界为连续粗亮线，视觉接近框选，不像参考图底座边缘的细芯、多层蓝光和星点质感。
+3. 修正后：8 个单元收缩为 15–19 格的独立不规则格群；主硬线降到 `0.7px`，新增蓝色柔光与流动星点。最终聚焦对照未发现可执行的 P0/P1/P2 问题。
+
+**Implementation Checklist**
+
+- [x] 8 个业务单元均为 10–20 个连续方格。
+- [x] 不规则轮廓沿底盘透视格线生成。
+- [x] 亮青细芯、蓝色柔光、白色流动星点。
+- [x] 标签无重叠，控制面板保持收起。
+- [x] 页面构建通过，控制台无 error / warn。
+
+final result: passed
+
+## 2026-07-22 单元边界同步加载复核
+
+- Idle detail evidence: `D:\codex\济南数字化诊断\原型项目\qa-boundary-reveal-idle-detail.png`
+- Running evidence: `D:\codex\济南数字化诊断\原型项目\qa-boundary-reveal-running.png`
+- Settled evidence: `D:\codex\济南数字化诊断\原型项目\qa-boundary-reveal-settled.png`
+- Timeline comparison: `D:\codex\济南数字化诊断\原型项目\qa-boundary-reveal-timeline.png`
+- Viewport: 1280 × 720 CSS px。
+
+**Findings**
+
+- 进入板块明细后的初始 `phase-idle` 状态，单元边界层透明度为 0，空底盘上不再提前出现分界线或标签。
+- `phase-running` 状态下，边界层复用密度图层的 `--wave-progress` 扫描遮罩，与业务图层同步从左向右逐步显现。
+- 扫描中段实测进度约 51.6%，边界和密度图层均只显示扫描线左侧区域。
+- `phase-settled` 状态下移除遮罩，边界层透明度恢复为 1，20 个业务单元完整显示。
+- 页面构建通过，浏览器控制台无 error / warn。
+
+**Implementation Checklist**
+
+- [x] 初始边界完全隐藏。
+- [x] 边界与密度图层共用扫描进度。
+- [x] 扫描完成后完整显示。
+- [x] 页面构建通过，控制台无 error / warn。
+
+final result: passed
+
+## 2026-07-22 业务事项完整归属复核
+
+- Implementation screenshot: `D:\codex\济南数字化诊断\原型项目\qa-matrix-complete-ownership-final.png`
+- Viewport: 1280 × 720 CSS px。
+- State: 单位全景 / 业务矩阵 / 运行监测与分析 / 扫描完成。
+
+**Findings**
+
+- 业务矩阵已从 8 个彼此分离的局部格群改为覆盖整张底盘的 8 个连续不规则分区。
+- 20 × 16 逻辑矩阵共 320 个事项格，分区格数合计为 320，无未归属格；由于底盘四角裁切，页面实际可交互事项格为 312 个，312 个均带有单元归属。
+- 每个可交互事项格的目标单元与所在边界单元一致，跨单元错配数为 0；312 个可见格对应 312 个唯一事项名称。
+- 单元标签同步显示各自事项数量，明细标题同步为“8 个业务单元 · 320 个业务事项”。
+- 共享边界保持细亮青芯、蓝色柔光和流动星点，完整分区后未出现标签重叠。
+- 页面构建通过，浏览器控制台无 error / warn。
+
+**Comparison History**
+
+1. [P1] 上一版仅圈出 8 个局部格群，外围大量事项格没有业务单元归属。
+2. 修正后：每个逻辑格通过唯一单元索引进入分区，事项目标也按该索引生成；覆盖率 320 / 320，错配 0。
+
+**Implementation Checklist**
+
+- [x] 所有事项格均属于且只属于一个业务单元。
+- [x] 单元边界完整覆盖矩阵，无空白归属区。
+- [x] 点击事项不会跨到其他业务单元。
+- [x] 标题和单元事项数量与矩阵格数量同步。
+- [x] 页面构建通过，控制台无 error / warn。
+
+final result: passed
+
+## 2026-07-22 业务矩阵20单元复核
+
+- Implementation screenshot: `D:\codex\济南数字化诊断\原型项目\qa-matrix-20-units-final.png`
+- Viewport: 1280 × 720 CSS px。
+- State: 单位全景 / 业务矩阵 / 运行监测与分析 / 扫描完成。
+
+**Findings**
+
+- 业务板块由 8 个业务单元扩展为 20 个业务单元，20 个单元共同覆盖 320 个逻辑事项格。
+- 各单元分别包含 `14–17` 个事项格，全部满足每单元 10–20 格的限制；分区总数为 320，无遗漏和重复归属。
+- 312 个可见事项格均有唯一单元索引，事项所属单元与边界单元错配数为 0，事项名称保持唯一。
+- 20 个单元采用连续、不规则的阶梯状边界；高密度状态下同步减细亮芯、柔光和星点，未形成粗亮网格。
+- 20 个单元标签无相互重叠，右侧标签已避让数据密度图例。
+- 页面构建通过，浏览器控制台无 error / warn。
+
+**Implementation Checklist**
+
+- [x] 20 个业务单元。
+- [x] 每单元 10–20 个事项格。
+- [x] 320 / 320 格完整归属。
+- [x] 事项与单元边界错配为 0。
+- [x] 标签无重叠、无图例遮挡。
+- [x] 页面构建通过，控制台无 error / warn。
 
 final result: passed

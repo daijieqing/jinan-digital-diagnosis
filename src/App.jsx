@@ -253,6 +253,143 @@ const flowNames = {
   }
 };
 
+const matrixOverviewLayout = [
+  { x: 260, y: 260, compactX: 100, compactY: 260 },
+  { x: 1510, y: 120, compactX: 1080, compactY: 160 },
+  { x: 2860, y: 460, compactX: 2060, compactY: 320 },
+  { x: 4260, y: 180, compactX: 3040, compactY: 180 },
+  { x: 760, y: 1710, compactX: 520, compactY: 1020 },
+  { x: 2240, y: 1480, compactX: 1500, compactY: 900 },
+  { x: 3690, y: 1920, compactX: 2480, compactY: 1100 },
+  { x: 1580, y: 2980, compactX: 1500, compactY: 1750 },
+];
+
+const matrixBlockModels = tree.flatMap((line, lineIndex) => {
+  const source = flowNames[line.id];
+  const itemsPerBlock = Math.ceil(source.items.length / source.blocks.length);
+  return source.blocks.map((name, blockIndex) => {
+    const items = source.items.slice(blockIndex * itemsPerBlock, (blockIndex + 1) * itemsPerBlock);
+    const units = [
+      ...(source.units[blockIndex] || []),
+      "数据归集", "信息核验", "业务受理", "分析研判", "规则配置", "任务分派",
+      "协同办理", "过程跟踪", "风险预警", "资源调度", "质量复核", "督导检查",
+      "绩效分析", "质效评估", "结果反馈", "档案管理", "知识沉淀", "综合评价",
+    ].slice(0, 20).map((unitName, unitIndex, unitList) => {
+      const start = Math.floor(unitIndex * items.length / unitList.length);
+      const end = Math.floor((unitIndex + 1) * items.length / unitList.length);
+      return { id: `${line.id}-block-${blockIndex}-unit-${unitIndex}`, name: unitName, items: items.slice(start, end) };
+    });
+    const index = lineIndex * 2 + blockIndex;
+    return {
+      id: `${line.id}-matrix-${blockIndex}`,
+      lineId: line.id,
+      lineIndex,
+      blockIndex,
+      name,
+      lineName: line.name,
+      supportBlock: line.blocks[blockIndex],
+      items,
+      units,
+      overviewX: matrixOverviewLayout[index].x,
+      overviewY: matrixOverviewLayout[index].y,
+      compactX: matrixOverviewLayout[index].compactX,
+      compactY: matrixOverviewLayout[index].compactY,
+      tone: ["cyan", "blue", "violet", "orange"][index % 4],
+    };
+  });
+});
+
+const matrixSurfaceQuad = {
+  far: { x: 1024, y: 58 },
+  right: { x: 1985, y: 558 },
+  near: { x: 1024, y: 1244 },
+  left: { x: 63, y: 558 },
+};
+
+const projectMatrixSurfacePoint = ([column, row]) => {
+  const u = column / 20;
+  const v = row / 16;
+  const { far, right, near, left } = matrixSurfaceQuad;
+  return {
+    x: (1 - u) * (1 - v) * far.x + u * (1 - v) * right.x + u * v * near.x + (1 - u) * v * left.x,
+    y: (1 - u) * (1 - v) * far.y + u * (1 - v) * right.y + u * v * near.y + (1 - u) * v * left.y,
+  };
+};
+
+const matrixUnitSeeds = [
+  [1.8, 1.9], [6.1, 1.7], [9.9, 2.2], [14.2, 1.8], [18.1, 2.1],
+  [2.2, 6.1], [5.8, 5.8], [10.3, 6.2], [13.7, 5.7], [17.8, 6.1],
+  [1.9, 10.1], [6.3, 10.4], [9.7, 9.8], [14.3, 10.3], [18.2, 9.9],
+  [2.1, 14.1], [5.7, 13.8], [10.2, 14.2], [13.8, 13.7], [17.9, 14.1],
+];
+
+const matrixUnitAssignmentByCell = new Map();
+const matrixUnitCellGroups = matrixUnitSeeds.map(seed => ({ seed, cells: [] }));
+for (let row = 0; row < 16; row += 1) {
+  for (let column = 0; column < 20; column += 1) {
+    const centerX = column + .5 + .7 * Math.sin((row + .5) * .92), centerY = row + .5;
+    let unitIndex = 0, nearestDistance = Number.POSITIVE_INFINITY;
+    matrixUnitSeeds.forEach(([seedX, seedY], index) => {
+      const distance = (centerX - seedX) ** 2 + (centerY - seedY) ** 2 * 1.08;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        unitIndex = index;
+      }
+    });
+    matrixUnitAssignmentByCell.set(`${column},${row}`, unitIndex);
+    matrixUnitCellGroups[unitIndex].cells.push([column, row]);
+  }
+}
+matrixUnitCellGroups.forEach((group, index) => {
+  group.label = group.cells.reduce((center, [column, row]) => [center[0] + column + .5, center[1] + row + .5], [0, 0]).map(value => value / group.cells.length);
+  if (index % 5 === 4) group.label[0] -= .8;
+});
+
+const traceCellGroupBoundary = cells => {
+  const occupied = new Set(cells.map(([column, row]) => `${column},${row}`));
+  const edges = [];
+  cells.forEach(([column, row]) => {
+    if (!occupied.has(`${column},${row - 1}`)) edges.push([[column, row], [column + 1, row]]);
+    if (!occupied.has(`${column + 1},${row}`)) edges.push([[column + 1, row], [column + 1, row + 1]]);
+    if (!occupied.has(`${column},${row + 1}`)) edges.push([[column + 1, row + 1], [column, row + 1]]);
+    if (!occupied.has(`${column - 1},${row}`)) edges.push([[column, row + 1], [column, row]]);
+  });
+  const remaining = new Map(edges.map(([from, to]) => [from.join(","), to]));
+  const loops = [];
+  while (remaining.size) {
+    const start = remaining.keys().next().value;
+    const points = [];
+    let cursor = start;
+    do {
+      points.push(cursor.split(",").map(Number));
+      const next = remaining.get(cursor);
+      remaining.delete(cursor);
+      cursor = next.join(",");
+    } while (cursor !== start && remaining.has(cursor));
+    loops.push(points);
+  }
+  return loops;
+};
+
+const matrixUnitShapes = matrixUnitCellGroups.map(group => {
+  const label = projectMatrixSurfacePoint(group.label);
+  const d = traceCellGroupBoundary(group.cells).map(loop => {
+    const points = loop.map(projectMatrixSurfacePoint);
+    return `${points.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ")} Z`;
+  }).join(" ");
+  return { d, labelX: label.x, labelY: label.y, cellCount: group.cells.length };
+});
+const matrixUnitTotalCells = matrixUnitShapes.reduce((total, shape) => total + shape.cellCount, 0);
+const matrixBusinessCellShapes = Array.from({ length: 20 * 16 }, (_, index) => {
+  const column = index % 20, row = Math.floor(index / 20);
+  const points = [[column, row], [column + 1, row], [column + 1, row + 1], [column, row + 1]].map(projectMatrixSurfacePoint);
+  return {
+    id: `${column}-${row}`,
+    tone: (column * 3 + row * 5) % 4,
+    d: `${points.map((point, pointIndex) => `${pointIndex ? "L" : "M"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ")} Z`,
+  };
+});
+
 function DenseBusinessFlow({ onSelect, onDrill, view }) {
   const [hoverBranch, setHoverBranch] = useState(null);
   const [activeBranch, setActiveBranch] = useState(null);
@@ -788,7 +925,7 @@ function SystemBusinessTree({ grain, scanPhase, scanRun, sliceTarget, setSliceTa
 }
 
 
-function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = "", showMetrics = true }) {
+function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = "", showMetrics = true, focusedBlock = null, systemOverlayActive = true }) {
   const depth = grainOrder.indexOf(grain);
   const businessQuery = businessSearch.trim().toLowerCase();
   const [terrainView, setTerrainView] = useState({ yaw: 0, pitch: 0 });
@@ -798,7 +935,7 @@ function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = 
   const [scanPhase, setScanPhase] = useState("idle");
   const drag = useRef(null);
   const demoSystems = ["城市数据中台", "统一身份认证平台", "视频资源共享平台", "协同办公平台"];
-  const targetList = tree.flatMap((line, lineIndex) => {
+  const allTargets = tree.flatMap((line, lineIndex) => {
     const source = flowNames[line.id];
     if (depth === 0) return [{ id: line.id, name: line.name, blocks: line.blocks, lineIndex }];
     if (depth === 1) return source.blocks.map((name, blockIndex) => ({ id: `${line.id}-block-${blockIndex}`, name, blocks: [line.blocks[blockIndex]], lineIndex, blockIndex }));
@@ -808,26 +945,51 @@ function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = 
       const blockIndex = Math.min(source.blocks.length - 1, Math.floor(itemIndex / itemsPerBlock));
       return { id: `${line.id}-item-${itemIndex}`, name, blocks: [line.blocks[blockIndex]], lineIndex, blockIndex, itemIndex };
     });
-  }).map((target, index) => {
+  });
+  const focusedTargets = focusedBlock ? (() => {
+    if (depth <= 1) return [{ id: focusedBlock.id, name: focusedBlock.name, blocks: [focusedBlock.supportBlock], lineIndex: focusedBlock.lineIndex, blockIndex: focusedBlock.blockIndex }];
+    if (depth === 2) return focusedBlock.units.map((unit, unitIndex) => ({ id: unit.id, name: unit.name, blocks: [focusedBlock.supportBlock], lineIndex: focusedBlock.lineIndex, blockIndex: focusedBlock.blockIndex, unitIndex }));
+    return focusedBlock.units.flatMap((unit, unitIndex) => matrixUnitCellGroups[unitIndex].cells.map(([column, row], itemIndex) => ({
+      id: `${unit.id}-item-${column}-${row}`,
+      name: itemIndex < unit.items.length ? unit.items[itemIndex] : `${unit.name}事项 ${String(itemIndex + 1).padStart(2, "0")}`,
+      blocks: [focusedBlock.supportBlock],
+      lineIndex: focusedBlock.lineIndex,
+      blockIndex: focusedBlock.blockIndex,
+      unitIndex,
+      itemIndex,
+      matrixCellKey: `${column},${row}`,
+    })));
+  })() : allTargets;
+  const targetList = focusedTargets.map((target, index) => {
     const base = [...new Set(target.blocks.map(block => block.system))];
     const extras = [0, 0, 1, 0, 2, 0, 1, 3][index % 8];
     return { ...target, systems: [...new Set([...base, ...demoSystems.slice(0, extras)])] };
   });
+  const targetsByUnit = focusedBlock ? focusedBlock.units.map((_, unitIndex) => targetList.filter(target => target.unitIndex === unitIndex)) : [];
+  const targetByMatrixCell = new Map(targetList.filter(target => target.matrixCellKey).map(target => [target.matrixCellKey, target]));
+  const getCellTarget = (row, column) => {
+    const assignedUnitIndex = focusedBlock && depth >= 2 ? matrixUnitAssignmentByCell.get(`${column},${row}`) : null;
+    const exactTarget = targetByMatrixCell.get(`${column},${row}`);
+    if (exactTarget) return { target: exactTarget, assignedUnitIndex };
+    const candidates = assignedUnitIndex === null || assignedUnitIndex === undefined ? targetList : targetsByUnit[assignedUnitIndex];
+    const availableTargets = candidates?.length ? candidates : targetList;
+    return { target: availableTargets[(row * 3 + column * 5 + depth) % availableTargets.length], assignedUnitIndex };
+  };
   const columns = 20, rows = 16;
   const cells = Array.from({ length: columns * rows }, (_, index) => {
     const row = Math.floor(index / columns), column = index % columns;
     const corner = (row < 1 || row > 14) && (column < 2 || column > 17);
-    const target = targetList[(row * 3 + column * 5 + depth) % targetList.length];
+    const { target, assignedUnitIndex } = getCellTarget(row, column);
     const density = getDensity(row, column, depth);
-    return { id: `${row}-${column}`, row, column, target, density, corner, businessMatch: !businessQuery || target.name.toLowerCase().includes(businessQuery) };
+    return { id: `${row}-${column}`, row, column, target, assignedUnitIndex, density, corner, businessMatch: !businessQuery || target.name.toLowerCase().includes(businessQuery) };
   }).filter(cell => !cell.corner);
   const waveColumns = 28, waveRows = 20;
   const waveCells = Array.from({ length: waveColumns * waveRows }, (_, index) => {
     const row = Math.floor(index / waveColumns), column = index % waveColumns;
     const sourceRow = Math.round(row / (waveRows - 1) * (rows - 1));
     const sourceColumn = Math.round(column / (waveColumns - 1) * (columns - 1));
-    const target = targetList[(sourceRow * 3 + sourceColumn * 5 + depth) % targetList.length];
-    return { id: `wave-${row}-${column}`, row, column, target, density: getDensity(sourceRow, sourceColumn, depth) };
+    const { target, assignedUnitIndex } = getCellTarget(sourceRow, sourceColumn);
+    return { id: `wave-${row}-${column}`, row, column, target, assignedUnitIndex, density: getDensity(sourceRow, sourceColumn, depth) };
   });
   const interactiveCells = cells.map(cell => ({
     ...cell.target,
@@ -836,6 +998,7 @@ function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = 
     cellId: cell.id,
     row: cell.row,
     column: cell.column,
+    assignedUnitIndex: cell.assignedUnitIndex,
     anchorX: 11 + (cell.column + .5) / columns * 78,
     anchorY: 13 + (cell.row + .5) / rows * 74,
     density: cell.density === "empty" ? "low" : cell.density,
@@ -843,7 +1006,8 @@ function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = 
     businessMatch: cell.businessMatch,
   }));
   const matchedBusinessCount = new Set(interactiveCells.filter(cell => cell.businessMatch).map(cell => cell.targetId)).size;
-  useEffect(() => setSliceTarget(null), [grain, businessQuery]);
+  const effectiveScanPhase = systemOverlayActive ? scanPhase : "settled";
+  useEffect(() => setSliceTarget(null), [grain, businessQuery, focusedBlock?.id]);
   useEffect(() => {
     let frame = 0;
     const startedAt = performance.now();
@@ -868,20 +1032,33 @@ function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = 
   }} onPointerMove={moveTerrain} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null} onWheel={event => {
     event.preventDefault(); setTerrainZoom(value => Math.max(.72, Math.min(1.45, value - event.deltaY * .001)));
   }}>
-    {systemView === "board" ? <div className={`system-basemap phase-${scanPhase} ${businessQuery ? "has-business-filter" : ""}`} style={{ transform: `translate(-50%, -50%) translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}>
+    {systemView === "board" ? <div className={`system-basemap phase-${effectiveScanPhase} ${systemOverlayActive ? "system-overlay-active" : "system-overlay-off"} ${businessQuery ? "has-business-filter" : ""}`} style={{ transform: `translate(-50%, -50%) translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}>
       <img className="system-basemap-image system-basemap-image-empty" src={systemSupportBasemapEmpty} alt="业务支撑空态底图" draggable="false" />
-      <img className="system-basemap-image system-basemap-image-final" src={systemSupportBasemap} alt="业务支撑密度底图" draggable="false" />
-      <img className="system-basemap-image system-basemap-image-ridge" src={systemSupportBasemap} alt="" draggable="false" />
-      <BasemapRevealTimeline runKey={`${grain}-${scanRun}`} onPhaseChange={setScanPhase} />
-      <div className="system-basemap-hitmap" aria-label="可交互业务矩阵">
-        {interactiveCells.map(cell => <div key={cell.id} className={`system-basemap-hitcell ${cell.businessMatch ? "business-match" : "business-filter-dimmed"}`} style={{ gridColumn: cell.column + 1, gridRow: cell.row + 1, "--node-color": holographicTone[cell.density] }}><button aria-label={`查看${cell.name}`} className={sliceTarget?.id === cell.id ? "selected" : ""} disabled={!cell.businessMatch} onClick={() => setSliceTarget(current => current?.id === cell.id ? null : cell)} /><span>{cell.name}</span></div>)}
-      </div>
-      {businessQuery && <div className={`matrix-filter-status ${matchedBusinessCount ? "" : "empty"}`}><small>业务筛选</small><b>{matchedBusinessCount ? `已定位 ${matchedBusinessCount} 个业务节点` : "未找到匹配业务"}</b><span>{businessSearch}</span></div>}
-      {sliceTarget && <HolographicStack target={sliceTarget} onClose={() => setSliceTarget(null)} onOpenApplication={onOpenApplication} />}
+      {focusedBlock && <svg className="matrix-business-base-layer" viewBox="0 0 2048 1365" preserveAspectRatio="none" aria-label="纯业务事项底图">{matrixBusinessCellShapes.map(cell => <path key={cell.id} className={`matrix-business-cell tone-${cell.tone}`} d={cell.d} />)}</svg>}
+      {systemOverlayActive && <><img className="system-basemap-image system-basemap-image-final" src={systemSupportBasemap} alt="业务支撑密度底图" draggable="false" /><img className="system-basemap-image system-basemap-image-ridge" src={systemSupportBasemap} alt="" draggable="false" /><BasemapRevealTimeline runKey={`${focusedBlock?.id || "all"}-${grain}-${scanRun}`} onPhaseChange={setScanPhase} /></>}
+      {focusedBlock && <svg className={`matrix-unit-group-layer ${focusedBlock.units.length > 12 ? "dense-units" : ""}`} viewBox="0 0 2048 1365" preserveAspectRatio="none" aria-label="业务单元分组">
+        <defs><filter id={`matrix-unit-aura-${focusedBlock.id}`} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.2" /></filter></defs>
+        {focusedBlock.units.map((unit, index) => {
+          const shape = matrixUnitShapes[index % matrixUnitShapes.length];
+          return <g key={unit.id} className={`matrix-unit-group group-${index}`} data-cell-count={shape.cellCount}>
+            <path className="matrix-unit-boundary-aura" d={shape.d} filter={`url(#matrix-unit-aura-${focusedBlock.id})`} />
+            <path className="matrix-unit-boundary-glow" d={shape.d} />
+            <path className="matrix-unit-boundary-main" d={shape.d} />
+            <path className="matrix-unit-boundary-spark" d={shape.d} />
+            <text x={shape.labelX} y={shape.labelY}>{unit.name}</text>
+            <text className="matrix-unit-count" x={shape.labelX} y={shape.labelY + (focusedBlock.units.length > 12 ? 22 : 28)}>{shape.cellCount} 个事项</text>
+          </g>;
+        })}
+      </svg>}
+      {systemOverlayActive && <div className="system-basemap-hitmap" aria-label="可交互业务矩阵">
+        {interactiveCells.map(cell => <div key={cell.id} data-unit-index={cell.assignedUnitIndex ?? undefined} data-target-unit-index={cell.unitIndex ?? undefined} className={`system-basemap-hitcell ${cell.businessMatch ? "business-match" : "business-filter-dimmed"}`} style={{ gridColumn: cell.column + 1, gridRow: cell.row + 1, "--node-color": holographicTone[cell.density] }}><button aria-label={`查看${cell.name}`} className={sliceTarget?.id === cell.id ? "selected" : ""} disabled={!cell.businessMatch} onClick={() => setSliceTarget(current => current?.id === cell.id ? null : cell)} /><span>{cell.name}</span></div>)}
+      </div>}
+      {systemOverlayActive && businessQuery && <div className={`matrix-filter-status ${matchedBusinessCount ? "" : "empty"}`}><small>业务筛选</small><b>{matchedBusinessCount ? `已定位 ${matchedBusinessCount} 个业务节点` : "未找到匹配业务"}</b><span>{businessSearch}</span></div>}
+      {systemOverlayActive && sliceTarget && <HolographicStack target={sliceTarget} onClose={() => setSliceTarget(null)} onOpenApplication={onOpenApplication} />}
     </div> : <div className="system-tree-stage" style={{ transform: `translateY(${terrainView.pitch * .18}px) rotate(${terrainView.yaw * .08}deg) scale(${terrainZoom})` }}><SystemBusinessTree grain={grain} scanPhase={scanPhase} scanRun={scanRun} sliceTarget={sliceTarget} setSliceTarget={setSliceTarget} onOpenApplication={onOpenApplication} /></div>}
     {showMetrics && <aside className="grid-metric-panel">{[["4","主线","梳理核心业务线"],["8","板块","系统功能分类"],["16","单位","业务责任单位"],["32","事项","诊断追踪点"]].map(([value,label,tip]) => <div key={label}><i /><b>{value}</b><span>{label}</span><small>{tip}</small></div>)}</aside>}
-    <aside className="grid-legend"><small>数据密度图例<br /><em>DATA DENSITY LEGEND</em></small><span><i className="legend-high" />高密度</span><span><i className="legend-medium" />中密度</span><span><i className="legend-low" />低密度</span></aside>
-    <aside className="grid-density"><small>系统覆盖度</small><div className="density-ring"><b>78%</b></div><p><span>低密度</span><i style={{ width: "68%" }} />68%</p><p><span>中密度</span><i style={{ width: "24%" }} />24%</p><p><span>高密度</span><i style={{ width: "8%" }} />8%</p></aside>
+    {systemOverlayActive && <aside className="grid-legend"><small>数据密度图例<br /><em>DATA DENSITY LEGEND</em></small><span><i className="legend-high" />高密度</span><span><i className="legend-medium" />中密度</span><span><i className="legend-low" />低密度</span></aside>}
+    {systemOverlayActive && <aside className="grid-density"><small>系统覆盖度</small><div className="density-ring"><b>78%</b></div><p><span>低密度</span><i style={{ width: "68%" }} />68%</p><p><span>中密度</span><i style={{ width: "24%" }} />24%</p><p><span>高密度</span><i style={{ width: "8%" }} />8%</p></aside>}
     <ViewController view={terrainView} setView={setTerrainView} />
     <div className="map-control-stack matrix-map-controls">
       <button onClick={() => setTerrainZoom(value => Math.min(1.45, value + .12))} title="放大" aria-label="放大">＋</button>
@@ -889,7 +1066,73 @@ function SystemTerrain({ grain, onOpenApplication, systemView, businessSearch = 
       <button onClick={() => { setTerrainView({ yaw: 0, pitch: 0 }); setTerrainZoom(1); }} title="复位" aria-label="复位">↺</button>
       <button className={terrainView.pitch ? "active" : ""} onClick={() => setTerrainView(value => ({ ...value, pitch: value.pitch ? 0 : -18 }))} title="倾斜视角" aria-label="倾斜视角">◇</button>
     </div>
-    <div className="grid-hint"><button disabled={scanPhase !== "settled"} onClick={() => { setSliceTarget(null); setScanRun(value => value + 1); }}>{scanPhase === "settled" ? "重新扫描" : scanPhase === "idle" ? "准备点亮" : "扫描中"}</button><span>左 → 右点亮　·　拖动 / 滑轮缩放　·　双击复位</span></div>
+    {systemOverlayActive && <div className="grid-hint"><button disabled={scanPhase !== "settled"} onClick={() => { setSliceTarget(null); setScanRun(value => value + 1); }}>{scanPhase === "settled" ? "重新扫描" : scanPhase === "idle" ? "准备点亮" : "扫描中"}</button><span>左 → 右点亮　·　拖动 / 滑轮缩放　·　双击复位</span></div>}
+  </div>;
+}
+
+function BusinessMatrixExplorer({ grain, businessSearch, systemOverlayActive, onOpenApplication, onGranularityChange, onDetailChange }) {
+  const [activeBlock, setActiveBlock] = useState(null);
+  const [overviewCamera, setOverviewCamera] = useState({ x: 36, y: 28, zoom: .28 });
+  const drag = useRef(null);
+  const query = businessSearch.trim().toLowerCase();
+  const blockMatches = block => !query || [block.name, block.lineName, ...block.units.map(unit => unit.name), ...block.items].some(value => value.toLowerCase().includes(query));
+  const startPan = event => {
+    if (event.button !== 0 || event.target.closest("button")) return;
+    drag.current = { x: event.clientX, y: event.clientY, camera: overviewCamera };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const movePan = event => {
+    if (!drag.current) return;
+    setOverviewCamera(value => ({ ...value, x: drag.current.camera.x + event.clientX - drag.current.x, y: drag.current.camera.y + event.clientY - drag.current.y }));
+  };
+  const zoomOverview = (delta, anchor = null) => setOverviewCamera(value => {
+    const zoom = Math.max(.18, Math.min(1.08, value.zoom + delta));
+    if (!anchor) return { ...value, zoom };
+    const worldX = (anchor.x - value.x) / value.zoom;
+    const worldY = (anchor.y - value.y) / value.zoom;
+    return { x: anchor.x - worldX * zoom, y: anchor.y - worldY * zoom, zoom };
+  });
+  const openBlock = block => {
+    setActiveBlock(block);
+    onGranularityChange?.("item");
+    onDetailChange?.(true);
+  };
+  const closeBlock = () => {
+    setActiveBlock(null);
+    onGranularityChange?.("block");
+    onDetailChange?.(false);
+  };
+
+  if (activeBlock) return <div className="business-matrix-explorer matrix-detail-mode">
+    <div className="matrix-detail-heading"><button onClick={closeBlock}>← 返回板块矩阵总览</button><div><small>当前业务板块</small><b>{activeBlock.name}</b><span>{activeBlock.units.length} 个业务单元 · {matrixUnitTotalCells} 个业务事项</span></div></div>
+    <SystemTerrain key={systemOverlayActive ? "matrix-system-on" : "matrix-system-off"} grain={grain} businessSearch={businessSearch} focusedBlock={activeBlock} showMetrics={false} systemOverlayActive={systemOverlayActive} onOpenApplication={onOpenApplication} systemView="board" />
+  </div>;
+
+  const matchedCount = matrixBlockModels.filter(blockMatches).length;
+  const layoutProgress = Math.max(0, Math.min(1, (overviewCamera.zoom - .18) / .9));
+  return <div className="business-matrix-explorer matrix-overview-mode" onPointerDown={startPan} onPointerMove={movePan} onPointerUp={() => drag.current = null} onPointerCancel={() => drag.current = null} onWheel={event => {
+    event.preventDefault();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    zoomOverview(event.deltaY < 0 ? .055 : -.055, { x: event.clientX - bounds.left, y: event.clientY - bounds.top });
+  }}>
+    <div className="matrix-overview-grid" style={{ "--matrix-grid-x": `${overviewCamera.x}px`, "--matrix-grid-y": `${overviewCamera.y}px`, "--matrix-grid-size": `${84 * overviewCamera.zoom}px` }} />
+    <div className="matrix-overview-world" style={{ transform: `translate3d(${overviewCamera.x}px, ${overviewCamera.y}px, 0) scale(${overviewCamera.zoom})` }}>
+      {matrixBlockModels.map((block, blockIndex) => {
+        const matched = blockMatches(block);
+        const matrixX = block.compactX + (block.overviewX - block.compactX) * layoutProgress;
+        const matrixY = block.compactY + (block.overviewY - block.compactY) * layoutProgress;
+        return <button key={block.id} className={`matrix-block-card tone-${block.tone} ${matched ? "matched" : "filtered"}`} style={{ left: matrixX, top: matrixY, "--matrix-delay": `${blockIndex * -.42}s` }} onClick={() => openBlock(block)} aria-label={`进入${block.name}矩阵`}>
+          <span className="matrix-card-index">MATRIX {String(blockIndex + 1).padStart(2, "0")}</span>
+          <span className="matrix-preview-stage" aria-hidden="true"><img className="matrix-island-basemap" src={systemSupportBasemap} alt="" draggable="false" /></span>
+          <span className="matrix-card-copy"><small>{block.lineName}</small><b>{block.name}</b><em>{block.units.length} 个业务单元 · {matrixUnitTotalCells} 个事项</em></span>
+          <span className="matrix-card-enter">进入板块 ›</span>
+        </button>;
+      })}
+    </div>
+    <div className="matrix-overview-heading"><small>BUSINESS MATRIX SPACE</small><b>业务板块矩阵空间</b><span>8 个独立板块分布于连续画布 · 拖动向外探索</span></div>
+    {query && <div className={`matrix-overview-search-status ${matchedCount ? "" : "empty"}`}>匹配 {matchedCount} / {matrixBlockModels.length} 个业务板块</div>}
+    <div className="map-control-stack matrix-overview-controls"><button onClick={() => zoomOverview(.08)} title="放大" aria-label="放大">＋</button><button onClick={() => zoomOverview(-.08)} title="缩小" aria-label="缩小">−</button><button onClick={() => setOverviewCamera({ x: 36, y: 28, zoom: .28 })} title="复位" aria-label="复位">↺</button></div>
+    <div className="matrix-overview-hint">拖动画布向外探索 · 滚轮定位缩放 · 点击矩阵进入板块</div>
   </div>;
 }
 
@@ -1227,7 +1470,9 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
     });
   };
   const toggleOverlay = value => {
-    if (canvasMode !== "panorama") setCanvasMode("panorama");
+    const matrixSystemToggle = canvasMode === "system" && value === "system";
+    if (canvasMode !== "panorama" && !matrixSystemToggle) setCanvasMode("panorama");
+    if (matrixSystemToggle) setControlCollapsed(true);
     if (activeOverlay === value) {
       setActiveOverlay(null);
       setSystemSupport(null);
@@ -1250,10 +1495,10 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
   return <div className={`unit-panorama canvas-${canvasMode}`}>
     {controlCollapsed ? <button className="panorama-control-launcher" onClick={() => setControlCollapsed(false)}><i />视图控制</button> : <aside className="panorama-control-sidebar">
       <div className="sidebar-title"><div><h3>视图控制</h3></div><button className="sidebar-collapse" onClick={() => setControlCollapsed(true)} title="收起面板">收起</button></div>
-      <section className="sidebar-section"><div className="sidebar-section-heading"><b>底图视图</b></div><div className="sidebar-segment">{[["panorama","业务树"],["flow","桑基图"],["system","业务矩阵"]].map(([value,label]) => <button key={value} className={canvasMode === value ? "active" : ""} onClick={() => { setCanvasMode(value); setSelected(null); }}>{label}</button>)}</div></section>
+      <section className="sidebar-section"><div className="sidebar-section-heading"><b>底图视图</b></div><div className="sidebar-segment">{[["panorama","业务树"],["flow","桑基图"],["system","业务矩阵"]].map(([value,label]) => <button key={value} className={canvasMode === value ? "active" : ""} onClick={() => { setCanvasMode(value); if (value === "system") { setBusinessGranularity("block"); setActiveOverlay(null); } setSelected(null); }}>{label}</button>)}</div></section>
       {(canvasMode === "panorama" || canvasMode === "system") && <section className="sidebar-section granularity-section"><div className="sidebar-section-heading"><b>展示层级</b><span>{canvasMode === "system" ? "矩阵粒度" : "节点粒度"}</span></div><div className="sidebar-segment compact">{[["block","板块"],["unit","单元"],["item","事项"]].map(([value,label]) => <button key={value} className={businessGranularity === value ? "active" : ""} onClick={() => setBusinessGranularity(value)}>{label}</button>)}</div></section>}
       {(canvasMode === "panorama" || canvasMode === "system") && <section className="sidebar-section business-filter-section"><div className="sidebar-section-heading"><b>业务筛选</b><span>{businessQuery ? canvasMode === "system" ? "矩阵内定位" : `${businessMatches?.size || 0} 个节点` : "模糊匹配"}</span></div><label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索板块、单元或事项" value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} placeholder="搜索板块 / 单元 / 事项" /></label>{businessQuery && <button className="business-filter-clear" onClick={() => setBusinessSearch("")}>清空业务筛选</button>}</section>}
-      <section className="sidebar-section overlay-section"><div className="sidebar-section-heading"><b>叠加图层</b><span>单选</span></div>{[["system","系统"],["project","项目"],["diagnosis","诊断"]].map(([value,label]) => <Fragment key={value}><button className={`layer-toggle-row ${canvasMode === "panorama" && activeOverlay === value ? "active" : ""}`} onClick={() => toggleOverlay(value)}><span><i />{label}</span><em /></button>{canvasMode === "panorama" && activeOverlay === value && <PanoramaLayerControls activeOverlay={activeOverlay} filters={filters} setFilters={setFilters} />}</Fragment>)}</section>
+      <section className="sidebar-section overlay-section"><div className="sidebar-section-heading"><b>叠加图层</b><span>单选</span></div>{[["system","系统"],["project","项目"],["diagnosis","诊断"]].map(([value,label]) => <Fragment key={value}><button className={`layer-toggle-row ${((canvasMode === "panorama") || (canvasMode === "system" && value === "system")) && activeOverlay === value ? "active" : ""}`} onClick={() => toggleOverlay(value)}><span><i />{label}</span><em /></button>{canvasMode === "panorama" && activeOverlay === value && <PanoramaLayerControls activeOverlay={activeOverlay} filters={filters} setFilters={setFilters} />}</Fragment>)}</section>
     </aside>}
     {canvasMode === "panorama" && <div className={`panorama-canvas overlay-${activeOverlay || "none"} ${overlayScanning ? "is-overlay-scanning" : ""}`} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onWheel={event => { event.preventDefault(); zoom(event.deltaY < 0 ? .06 : -.06); }}>
       <div className="panorama-grid" />
@@ -1289,7 +1534,7 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
       <div className="panorama-scale">缩放 {Math.round(camera.zoom * 100)}% · 拖动画布 / 滚轮缩放</div>
     </div>}
     {canvasMode === "flow" && <BusinessSankey onSelect={selectLegacyBusiness} />}
-    {canvasMode === "system" && <SystemTerrain grain={{ block: "业务板块", unit: "业务单元", item: "业务事项" }[businessGranularity]} businessSearch={businessSearch} showMetrics={false} onOpenApplication={onOpenApplication} systemView="board" />}
+    {canvasMode === "system" && <BusinessMatrixExplorer grain={{ block: "业务板块", unit: "业务单元", item: "业务事项" }[businessGranularity]} businessSearch={businessSearch} systemOverlayActive={activeOverlay === "system"} onGranularityChange={setBusinessGranularity} onDetailChange={setControlCollapsed} onOpenApplication={onOpenApplication} />}
     {canvasMode === "panorama" && <div className="panorama-control-cluster"><ViewController view={{ yaw: camera.yaw, pitch: camera.pitch }} setView={setPanoramaView} /><div className="map-control-stack panorama-map-controls"><button onClick={() => zoom(.08)} title="放大" aria-label="放大">＋</button><button onClick={() => zoom(-.08)} title="缩小" aria-label="缩小">−</button><button onClick={resetView} title="复位" aria-label="复位">↺</button><button className={viewPreset === "oblique" ? "active" : ""} onClick={toggleView} title="倾斜视角" aria-label="倾斜视角">◇</button></div></div>}
   </div>;
 }
