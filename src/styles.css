@@ -1318,6 +1318,19 @@ footer { position: absolute; z-index: 30; bottom: 14px; left: 3.2%; right: 3.2%;
 .panorama-control-sidebar .sidebar-section-heading b { font-size: 12px; }
 .panorama-control-sidebar .sidebar-section-heading span { font-size: 10px; }
 .panorama-control-sidebar .sidebar-segment button { font-size: 11px; }
+.panorama-control-sidebar .basemap-section {
+  padding: 6px 0 4px;
+  border-bottom: 0;
+}
+.panorama-control-sidebar .basemap-section .sidebar-section-heading,
+.panorama-control-sidebar .granularity-section .sidebar-section-heading { margin-bottom: 5px; }
+.panorama-control-sidebar .basemap-section .sidebar-segment {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 2px;
+}
+.panorama-control-sidebar .basemap-section .sidebar-segment button,
+.panorama-control-sidebar .granularity-section .sidebar-segment button { height: 27px; }
+.panorama-control-sidebar .basemap-section + .granularity-section { padding: 4px 0 8px; }
 .panorama-control-sidebar .layer-toggle-row > span { font-size: 13px; }
 .panorama-control-sidebar .sidebar-search input { font-size: 11px; }
 .panorama-control-sidebar .sidebar-layer-detail .panel-tabs button,
