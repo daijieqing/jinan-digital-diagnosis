@@ -1885,16 +1885,17 @@ footer { position: absolute; z-index: 30; bottom: 14px; left: 3.2%; right: 3.2%;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(230px, 1fr);
+  align-items: start;
   gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: auto;
   padding: 2px 2px 8px;
   scrollbar-width: thin;
   scrollbar-color: rgba(70, 177, 230, .5) transparent;
 }
 .catalog-block {
   min-width: 0;
-  min-height: 0;
+  height: max-content;
+  align-self: start;
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(68, 126, 183, .2);
@@ -1971,18 +1972,19 @@ footer { position: absolute; z-index: 30; bottom: 14px; left: 3.2%; right: 3.2%;
   font-variant-numeric: tabular-nums;
 }
 .catalog-units {
-  min-height: 0;
   padding: 6px;
   display: grid;
-  grid-template-rows: repeat(4, minmax(78px, 1fr));
+  grid-template-rows: none;
+  grid-auto-rows: minmax(104px, max-content);
   gap: 5px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(70, 177, 230, .38) transparent;
+  overflow: visible;
 }
 .catalog-unit-card {
+  box-sizing: border-box;
   min-width: 0;
+  min-height: 104px;
   padding: 7px 10px 6px;
+  overflow: hidden;
   border: 1px solid rgba(92, 139, 190, .18);
   border-radius: 5px;
   background: rgba(29, 45, 68, .78);

@@ -1248,19 +1248,22 @@ const panoramaDiagnoses = Array.from({ length: 36 }, (_, index) => {
 });
 
 const catalogMainlines = [
-  { name: "城市运行统筹", blocks: ["城市运行监测", "城市运行指挥", "城市治理监督", "城市协同保障"] },
-  { name: "城市治理监督", blocks: ["监督事项受理", "综合巡查监管", "执法协同处置", "监督成效评估"] },
-  { name: "公共服务保障", blocks: ["公共诉求受理", "服务资源调度", "事项协同办理", "服务质效评价"] },
-  { name: "应急联动处置", blocks: ["风险监测预警", "应急指挥调度", "部门联动处置", "应急复盘评估"] },
-  { name: "数字政府协同", blocks: ["政务协同受理", "跨部门任务编排", "协同事项办理", "政务效能分析"] },
-  { name: "数据资源治理", blocks: ["数据归集治理", "数据共享交换", "数据资产运营", "数据质量评估"] }
+  { name: "城市运行统筹", blocks: ["城市运行监测", "城市运行指挥", "城市治理监督", "城市协同保障", "运行风险预警", "资源统筹调度", "运行质效评估"] },
+  { name: "城市治理监督", blocks: ["监督事项受理", "综合巡查监管", "执法协同处置", "监督成效评估", "案件闭环管理", "监督数据分析"] },
+  { name: "公共服务保障", blocks: ["公共诉求受理", "服务资源调度", "事项协同办理", "服务质效评价", "民生服务联动", "公共资源保障", "服务风险预警"] },
+  { name: "应急联动处置", blocks: ["风险监测预警", "应急指挥调度", "部门联动处置", "应急复盘评估", "预案资源管理", "应急信息发布"] },
+  { name: "数字政府协同", blocks: ["政务协同受理", "跨部门任务编排", "协同事项办理", "政务效能分析", "机关运行保障", "政策协同落实", "督查督办管理", "政务服务评价"] },
+  { name: "数据资源治理", blocks: ["数据归集治理", "数据共享交换", "数据资产运营", "数据质量评估", "数据安全管控", "数据标准管理", "数据开放服务"] }
 ];
 
 const catalogUnitTemplates = [
   { suffix: "受理分析", items: ["需求受理", "工单登记", "要素核验", "分类分级", "任务预审"] },
   { suffix: "任务编排", items: ["任务拆分", "部门派发", "时限配置", "规则匹配", "资源协调"] },
   { suffix: "任务协同", items: ["进度跟踪", "跨域协同", "异常处置", "结果核验", "闭环确认"] },
-  { suffix: "成效反馈", items: ["成效评价", "回访核验", "问题复盘", "数据归档", "改进建议"] }
+  { suffix: "成效反馈", items: ["成效评价", "回访核验", "问题复盘", "数据归档", "改进建议"] },
+  { suffix: "风险管控", items: ["风险识别", "指标预警", "风险研判", "分级处置", "复盘销号"] },
+  { suffix: "资源保障", items: ["资源盘点", "能力匹配", "资源调度", "使用监测", "效能评价"] },
+  { suffix: "数据治理", items: ["数据采集", "质量校核", "标准治理", "权限管控", "数据归档"] }
 ];
 
 function BusinessCatalogBasemap({ businessSearch, onSelect, activeOverlay, activeEntities, overlayScanning }) {
@@ -1272,12 +1275,13 @@ function BusinessCatalogBasemap({ businessSearch, onSelect, activeOverlay, activ
   const blocks = activeLine.blocks.map((blockName, blockIndex) => ({
     id: `catalog-${activeLineIndex}-${blockIndex}`,
     name: blockName,
-    units: catalogUnitTemplates.map((template, unitIndex) => ({
+    units: catalogUnitTemplates.slice(0, 4 + ((activeLineIndex * 3 + blockIndex * 5) % 4)).map((template, unitIndex) => ({
       id: `catalog-${activeLineIndex}-${blockIndex}-${unitIndex}`,
       name: `${blockName.slice(0, 4)}${template.suffix}`,
       items: template.items
     })).filter(unit => lineMatches || `${blockName}${unit.name}${unit.items.join("")}`.toLowerCase().includes(query))
   })).filter(block => !query || lineMatches || block.name.toLowerCase().includes(query) || block.units.length);
+  const visibleUnitCount = blocks.reduce((total, block) => total + block.units.length, 0);
   const overlayLegend = activeOverlay === "system"
     ? [{ label: "低支撑", tone: "#41c9ff" }, { label: "中支撑", tone: "#706eff" }, { label: "高支撑", tone: "#ff9847" }]
     : activeOverlay === "project"
@@ -1322,7 +1326,7 @@ function BusinessCatalogBasemap({ businessSearch, onSelect, activeOverlay, activ
       {catalogMainlines.map((line, index) => <button key={line.name} className={index === activeLineIndex ? "active" : ""} onClick={() => { setActiveLineIndex(index); setActiveUnitId(""); }}><span>{String(index + 1).padStart(2, "0")}</span><b>{line.name}</b></button>)}
     </nav>
     <section className="catalog-board">
-      <header className="catalog-board-heading"><div><small>BUSINESS BOARD</small><h3>{activeLine.name}</h3></div>{activeOverlay ? <div className="catalog-overlay-summary"><b>{activeOverlay === "system" ? "系统支撑" : activeOverlay === "project" ? "项目建设" : "诊断问题"}事项图层</b><span>{overlayLegend.map(item => <em key={item.label} style={{ "--catalog-legend-tone": item.tone }}>{item.label}</em>)}</span><small>事项级 · {activeEntities.length} 个{activeOverlay === "system" ? "系统" : activeOverlay === "project" ? "项目" : "问题"}</small></div> : <span>{activeLine.blocks.length} 个业务板块 · {activeLine.blocks.length * catalogUnitTemplates.length} 个业务单元</span>}</header>
+      <header className="catalog-board-heading"><div><small>BUSINESS BOARD</small><h3>{activeLine.name}</h3></div>{activeOverlay ? <div className="catalog-overlay-summary"><b>{activeOverlay === "system" ? "系统支撑" : activeOverlay === "project" ? "项目建设" : "诊断问题"}事项图层</b><span>{overlayLegend.map(item => <em key={item.label} style={{ "--catalog-legend-tone": item.tone }}>{item.label}</em>)}</span><small>事项级 · {activeEntities.length} 个{activeOverlay === "system" ? "系统" : activeOverlay === "project" ? "项目" : "问题"}</small></div> : <span>{blocks.length} 个业务板块 · {visibleUnitCount} 个业务单元</span>}</header>
       {blocks.length ? <div className="catalog-blocks">
         {blocks.map((block, blockIndex) => {
           const blockItemMetas = block.units.flatMap((unit, unitIndex) => unit.items.map((_, itemIndex) => getItemOverlayMeta(blockIndex, unitIndex, itemIndex)));
