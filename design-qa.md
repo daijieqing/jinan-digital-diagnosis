@@ -1,5 +1,90 @@
 # Design QA — 系统业务支撑底图
 
+## 2026-07-23 业务目录面积与滚动条位置调整
+
+- Source visual truth path: `C:\Users\46415\AppData\Local\Temp\codex-clipboard-86e5e83d-0902-4e71-bbc0-9ad5a708ad6e.png`
+- Implementation screenshot path: `D:\codex\济南数字化诊断\原型项目\business-catalog-expanded.png`
+- Normalized comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-catalog-expanded-comparison.png`
+- Viewport: 应用内浏览器 1021 × 433；业务目录可用区域 685 × 223。
+- Pixel dimensions and density: 参考图 689 × 453，1x；实现截图 1021 × 433，CSS 视口与截图像素 1:1；实现主体按原始比例裁切为 685 × 223，并与参考图放入同一张对比图，未做纵向拉伸。
+- State: 单位业务全景 / 业务目录 / 城市运行统筹 / 无业务筛选 / 无详情抽屉。
+- Full-view evidence: `business-catalog-expanded.png` 检查页面内画布占比、视图控制遮挡和底部空间。
+- Focused-region evidence: `business-catalog-expanded-comparison.png` 检查六条主线、板块列和横向滚动条位置。
+- Primary interactions tested: 主线切换后恢复“城市运行统筹”；六条主线在当前矮视口中全部可见。
+- Console errors checked: 无页面 console error 或 warning。
+
+**Findings**
+
+- 无剩余 P0/P1/P2 问题。业务目录的上下边距已压缩，主体画布高度由原有留白方案扩大到当前容器可用高度，横向滚动条距底图底边仅 8px。
+- Fonts and typography: 矮视口下仅压缩左侧目录字号和行高，主线名称仍可完整辨认；中央业务文字层级保持不变。
+- Spacing and layout rhythm: 画布顶部 8px、底部 8px；右侧边界贴近控制面板，未产生遮挡；六条主线全部落在 223px 高的目录栏内。
+- Colors and visual tokens: 保持原深蓝、蓝灰与青色选中态，不改变既有主题。
+- Image quality and asset fidelity: 本次仅调整布局尺寸和响应式规则，没有新增、拉伸或替换任何视觉资产。
+- Copy and content: 业务主线、板块、单元和事项内容未改变。
+
+**Comparison History**
+
+1. [P2] 原底图上下各保留约 42px，导致画布偏小、横向滚动条悬在底部上方。
+2. 修复：常规视口将画布边距收紧至 12–14px；1280px 以下收紧至 8–10px，滚动条距底边降至 8px。
+3. [P2] 收紧后在 433px 高窗口中左侧只能显示部分主线。
+4. 修复：增加矮视口目录密度规则，当前 6 条主线全部可见，最后一条底边 337px，小于目录容器底边 345px。
+
+**Implementation Checklist**
+
+- [x] 扩大业务目录底图面积。
+- [x] 将横向滚动条下移到距底边 8px。
+- [x] 保持右侧控制面板不遮挡主体。
+- [x] 矮视口下完整展示 6 条主线。
+- [x] 生产构建通过。
+
+final result: passed
+
+## 2026-07-22 “业务目录”第三底图
+
+- Source visual truth path: `C:\Users\46415\AppData\Local\Temp\codex-clipboard-86e5e83d-0902-4e71-bbc0-9ad5a708ad6e.png`
+- Implementation screenshot path: `D:\codex\济南数字化诊断\原型项目\business-catalog-final.png`
+- Focused implementation crop: `D:\codex\济南数字化诊断\原型项目\business-catalog-final-crop.png`
+- Normalized comparison evidence: `D:\codex\济南数字化诊断\原型项目\business-catalog-comparison.png`
+- Viewport: 应用内浏览器 1280 × 720；单位业务全景中的底图区域裁切为 930 × 462。
+- Pixel dimensions and density: 参考图 689 × 453，1x；实现全屏 1280 × 720，CSS 视口与截图像素均为 1:1；对比图将参考图等比归一到 699 × 462，并与 930 × 462 的实现主体并列。
+- State: 单位业务全景 / 业务目录 / 城市运行统筹 / 无业务筛选 / 无详情抽屉。
+- Full-view evidence: `business-catalog-final.png` 用于检查页面内整体占比、主线目录、板块列和视图控制面板的关系。
+- Focused-region evidence: `business-catalog-comparison.png` 将参考图与底图主体放入同一张图，检查卡片密度、纵向板块结构、文字层级和深蓝色视觉语言。
+- Primary interactions tested: 三种底图切换；6 条主线切换；业务搜索“成效反馈”后保留 4 个板块与 4 张命中卡片；点击业务单元卡片打开详情抽屉；清空搜索并恢复默认主线。
+- Console errors checked: 应用内浏览器未发现页面 console error 或 warning。
+
+**Findings**
+
+- 无剩余 P0/P1/P2 问题。实现保留参考图的“板块列 + 单元事项卡片”核心结构，并按用户补充要求将左侧扩展为 6 条可切换业务主线。
+- Fonts and typography: 使用现有原型的中文无衬线字体和纯白文字，通过 8–16px 字号、字重与透明度区分主线、板块、单元、事项；4 张卡片同时可见时仍可辨认。
+- Spacing and layout rhythm: 左侧目录固定宽度，中央按业务板块横向排列；每个板块为独立纵向泳道，内部 4 张等高卡片完整落在当前 720px 视口内，更多板块通过横向滚动查看。
+- Colors and visual tokens: 深蓝黑底、蓝灰卡片、青色选中态与现有业务树/业务矩阵保持一致；未引入新的高饱和文字颜色。
+- Image quality and asset fidelity: 参考图的主体均为界面结构与文字卡片，没有需要生成或替换的照片、插画或品牌图像；实现未使用占位图或近似图标冒充视觉资产。
+- Copy and content: 6 条主线、4 个板块、16 个单元及事项示例均使用真实业务语义，卡片明确表达“单元名称 + 事项清单”。
+- Interaction and accessibility: 主线、底图、搜索和卡片均使用可聚焦的原生按钮或输入框；主线目录具有导航语义，点击卡片可继续进入现有详情抽屉。
+
+**Comparison History**
+
+1. [P2] 初版卡片高度为 130px，在 1280 × 720 视口中只能完整看到 3 张卡片，与参考图的 4 层结构不一致。
+2. 修复：将板块内卡片调整为 4 行自适应布局，压缩内边距、事项行距和卡片间距。
+3. 复核：当前每张卡片约 78px，板块内容区 `scrollHeight` 与 `clientHeight` 同为 343px，4 张卡片均完整显示；并列对比未发现新的 P0/P1/P2 差异。
+
+**Implementation Checklist**
+
+- [x] 在业务树、业务矩阵后增加“业务目录”第三底图。
+- [x] 左侧提供 6 条目录式业务主线。
+- [x] 每个纵向泳道代表一个业务板块。
+- [x] 每张卡片组合业务单元与事项清单。
+- [x] 主线切换、业务搜索、卡片详情与横向浏览可用。
+- [x] 1280 × 720 应用内浏览器可视检查通过。
+- [x] 生产构建通过。
+
+**Follow-up Polish**
+
+- P3：若后续需要更接近参考图的小图标语言，可统一补充一套业务类别图标资产；当前版本优先保证业务结构和文字表达。
+
+final result: passed
+
 ## 2026-07-14 “业务流向洞察”桑基图复刻
 
 - Source visual truth: `C:\Users\46415\AppData\Local\Temp\codex-clipboard-fbf63b60-2c0f-4b83-9556-d15f44aedca1.png`

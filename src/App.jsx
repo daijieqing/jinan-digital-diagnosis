@@ -1247,6 +1247,107 @@ const panoramaDiagnoses = Array.from({ length: 36 }, (_, index) => {
   return { id: `diagnosis-${index}`, name: `${target.name}·${category}`, category, targetIds: [target.id] };
 });
 
+const catalogMainlines = [
+  { name: "城市运行统筹", blocks: ["城市运行监测", "城市运行指挥", "城市治理监督", "城市协同保障"] },
+  { name: "城市治理监督", blocks: ["监督事项受理", "综合巡查监管", "执法协同处置", "监督成效评估"] },
+  { name: "公共服务保障", blocks: ["公共诉求受理", "服务资源调度", "事项协同办理", "服务质效评价"] },
+  { name: "应急联动处置", blocks: ["风险监测预警", "应急指挥调度", "部门联动处置", "应急复盘评估"] },
+  { name: "数字政府协同", blocks: ["政务协同受理", "跨部门任务编排", "协同事项办理", "政务效能分析"] },
+  { name: "数据资源治理", blocks: ["数据归集治理", "数据共享交换", "数据资产运营", "数据质量评估"] }
+];
+
+const catalogUnitTemplates = [
+  { suffix: "受理分析", items: ["需求受理", "工单登记", "要素核验", "分类分级", "任务预审"] },
+  { suffix: "任务编排", items: ["任务拆分", "部门派发", "时限配置", "规则匹配", "资源协调"] },
+  { suffix: "任务协同", items: ["进度跟踪", "跨域协同", "异常处置", "结果核验", "闭环确认"] },
+  { suffix: "成效反馈", items: ["成效评价", "回访核验", "问题复盘", "数据归档", "改进建议"] }
+];
+
+function BusinessCatalogBasemap({ businessSearch, onSelect, activeOverlay, activeEntities, overlayScanning }) {
+  const [activeLineIndex, setActiveLineIndex] = useState(0);
+  const [activeUnitId, setActiveUnitId] = useState("");
+  const activeLine = catalogMainlines[activeLineIndex];
+  const query = businessSearch.trim().toLowerCase();
+  const lineMatches = !query || activeLine.name.toLowerCase().includes(query);
+  const blocks = activeLine.blocks.map((blockName, blockIndex) => ({
+    id: `catalog-${activeLineIndex}-${blockIndex}`,
+    name: blockName,
+    units: catalogUnitTemplates.map((template, unitIndex) => ({
+      id: `catalog-${activeLineIndex}-${blockIndex}-${unitIndex}`,
+      name: `${blockName.slice(0, 4)}${template.suffix}`,
+      items: template.items
+    })).filter(unit => lineMatches || `${blockName}${unit.name}${unit.items.join("")}`.toLowerCase().includes(query))
+  })).filter(block => !query || lineMatches || block.name.toLowerCase().includes(query) || block.units.length);
+  const overlayLegend = activeOverlay === "system"
+    ? [{ label: "低支撑", tone: "#41c9ff" }, { label: "中支撑", tone: "#706eff" }, { label: "高支撑", tone: "#ff9847" }]
+    : activeOverlay === "project"
+      ? [{ label: "规划", tone: "#8f75f1" }, { label: "建设中", tone: "#ff9847" }, { label: "已建成", tone: "#42d8ff" }]
+      : activeOverlay === "diagnosis"
+        ? [{ label: "无系统支撑", tone: "#ff9f43" }, { label: "系统冗余", tone: "#8b7cff" }]
+        : [];
+  const overlayEntitySeed = activeEntities.reduce((total, entity) => total + [...entity.id].reduce((sum, char) => sum + char.charCodeAt(0), 0), 0);
+  const getItemOverlayMeta = (blockIndex, unitIndex, itemIndex) => {
+    if (!activeOverlay || !activeEntities.length) return null;
+    const itemSeed = activeLineIndex * 41 + blockIndex * 17 + unitIndex * 7 + itemIndex * 3 + overlayEntitySeed;
+    const coverageThreshold = activeOverlay === "diagnosis"
+      ? Math.min(5, 2 + Math.ceil(activeEntities.length / 12))
+      : Math.min(10, 4 + Math.ceil(activeEntities.length / 4));
+    if (itemSeed % 12 >= coverageThreshold) return null;
+    return overlayLegend[itemSeed % overlayLegend.length];
+  };
+  const summarizeOverlay = metas => {
+    const matched = metas.filter(Boolean).length;
+    const segments = overlayLegend.map(meta => ({ ...meta, count: metas.filter(item => item?.label === meta.label).length }));
+    const dominant = segments.reduce((highest, segment) => segment.count > highest.count ? segment : highest, { tone: "#53d7ff", count: 0 });
+    return { matched, segments, dominant };
+  };
+
+  const openUnit = (block, unit) => {
+    setActiveUnitId(unit.id);
+    onSelect({
+      type: "business",
+      name: unit.name,
+      line: activeLine.name,
+      block: block.name,
+      unit: unit.name,
+      system: "城市运行一网统管平台",
+      project: "城市运行中枢升级",
+      risk: ""
+    });
+  };
+
+  return <div className={`business-catalog-basemap ${activeOverlay ? `has-overlay overlay-${activeOverlay}` : ""} ${overlayScanning ? "is-overlay-scanning" : ""}`}>
+    <nav className="catalog-mainlines" aria-label="业务主线看板">
+      <div className="catalog-mainline-title"><small>业务主线</small><b>业务看板</b></div>
+      {catalogMainlines.map((line, index) => <button key={line.name} className={index === activeLineIndex ? "active" : ""} onClick={() => { setActiveLineIndex(index); setActiveUnitId(""); }}><span>{String(index + 1).padStart(2, "0")}</span><b>{line.name}</b></button>)}
+    </nav>
+    <section className="catalog-board">
+      <header className="catalog-board-heading"><div><small>BUSINESS BOARD</small><h3>{activeLine.name}</h3></div>{activeOverlay ? <div className="catalog-overlay-summary"><b>{activeOverlay === "system" ? "系统支撑" : activeOverlay === "project" ? "项目建设" : "诊断问题"}事项图层</b><span>{overlayLegend.map(item => <em key={item.label} style={{ "--catalog-legend-tone": item.tone }}>{item.label}</em>)}</span><small>事项级 · {activeEntities.length} 个{activeOverlay === "system" ? "系统" : activeOverlay === "project" ? "项目" : "问题"}</small></div> : <span>{activeLine.blocks.length} 个业务板块 · {activeLine.blocks.length * catalogUnitTemplates.length} 个业务单元</span>}</header>
+      {blocks.length ? <div className="catalog-blocks">
+        {blocks.map((block, blockIndex) => {
+          const blockItemMetas = block.units.flatMap((unit, unitIndex) => unit.items.map((_, itemIndex) => getItemOverlayMeta(blockIndex, unitIndex, itemIndex)));
+          const blockOverlay = summarizeOverlay(blockItemMetas);
+          return <article key={block.id} className={`catalog-block ${activeOverlay && blockOverlay.matched ? "has-overlay-coverage" : ""}`} style={activeOverlay && blockOverlay.matched ? { "--catalog-overlay": blockOverlay.dominant.tone } : undefined}>
+          <div className="catalog-block-heading"><span>{String(blockIndex + 1).padStart(2, "0")}</span><b>{block.name}</b>{activeOverlay ? <div className="catalog-coverage-summary"><span className="catalog-coverage-bar">{blockOverlay.segments.filter(segment => segment.count).map(segment => <i key={segment.label} style={{ "--catalog-segment": segment.tone, flex: segment.count }} />)}</span><em>{blockOverlay.matched}/{blockItemMetas.length}</em></div> : <small>业务板块</small>}</div>
+          <div className="catalog-units">
+            {block.units.map((unit, unitIndex) => {
+              const unitItemMetas = unit.items.map((_, itemIndex) => getItemOverlayMeta(blockIndex, unitIndex, itemIndex));
+              const unitOverlay = summarizeOverlay(unitItemMetas);
+              return <button key={unit.id} className={`catalog-unit-card ${activeUnitId === unit.id ? "active" : ""} ${activeOverlay && unitOverlay.matched ? "has-overlay-coverage" : ""}`} style={activeOverlay && unitOverlay.matched ? { "--catalog-overlay": unitOverlay.dominant.tone } : undefined} onClick={() => openUnit(block, unit)}>
+              <div className="catalog-unit-name"><span>{String(unitIndex + 1).padStart(2, "0")}</span><b>{unit.name}</b>{activeOverlay && <div className="catalog-coverage-summary unit"><span className="catalog-coverage-bar">{unitOverlay.segments.filter(segment => segment.count).map(segment => <i key={segment.label} style={{ "--catalog-segment": segment.tone, flex: segment.count }} />)}</span><em>{unitOverlay.matched}/{unit.items.length}</em></div>}</div>
+              <ul>{unit.items.map((item, itemIndex) => {
+                const itemOverlayMeta = unitItemMetas[itemIndex];
+                return <li key={item} className={activeOverlay ? itemOverlayMeta ? "overlay-item" : "overlay-item-unmatched" : ""} style={itemOverlayMeta ? { "--catalog-overlay": itemOverlayMeta.tone, "--catalog-overlay-delay": `${blockIndex * .18 + unitIndex * .05 + itemIndex * .025}s` } : undefined}><span>{item}</span>{itemOverlayMeta && <em>{itemOverlayMeta.label}</em>}</li>;
+              })}</ul>
+            </button>})}
+          </div>
+        </article>})}
+      </div> : <div className="catalog-empty"><b>当前主线下未找到匹配业务</b><span>可切换左侧主线或清空业务筛选</span></div>}
+    </section>
+    <div className="catalog-footnote">左侧切换业务主线 · 横向浏览业务板块 · 系统 / 项目 / 诊断下沉至事项级叠加</div>
+  </div>;
+}
+
 function PanoramaLayerControls({ activeOverlay, filters, setFilters }) {
   if (!activeOverlay) return null;
   const current = filters[activeOverlay];
@@ -1471,7 +1572,8 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
   };
   const toggleOverlay = value => {
     const matrixSystemToggle = canvasMode === "system" && value === "system";
-    if (canvasMode !== "panorama" && !matrixSystemToggle) setCanvasMode("panorama");
+    const catalogOverlayToggle = canvasMode === "catalog" && (value === "system" || value === "project" || value === "diagnosis");
+    if (canvasMode !== "panorama" && !matrixSystemToggle && !catalogOverlayToggle) setCanvasMode("panorama");
     if (matrixSystemToggle) setControlCollapsed(true);
     if (activeOverlay === value) {
       setActiveOverlay(null);
@@ -1495,10 +1597,10 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
   return <div className={`unit-panorama canvas-${canvasMode}`}>
     {controlCollapsed ? <button className="panorama-control-launcher" onClick={() => setControlCollapsed(false)}><i />视图控制</button> : <aside className="panorama-control-sidebar">
       <div className="sidebar-title"><div><h3>视图控制</h3></div><button className="sidebar-collapse" onClick={() => setControlCollapsed(true)} title="收起面板">收起</button></div>
-      <section className="sidebar-section basemap-section"><div className="sidebar-section-heading"><b>底图视图</b></div><div className="sidebar-segment">{[["panorama","业务树"],["system","业务矩阵"]].map(([value,label]) => <button key={value} className={canvasMode === value ? "active" : ""} onClick={() => { setCanvasMode(value); if (value === "system") { setBusinessGranularity("block"); setActiveOverlay(null); } setSelected(null); }}>{label}</button>)}</div></section>
+      <section className="sidebar-section basemap-section"><div className="sidebar-section-heading"><b>底图视图</b><span>公共控制</span></div><div className="sidebar-segment">{[["panorama","业务树"],["system","业务矩阵"],["catalog","业务看板"]].map(([value,label]) => <button key={value} className={canvasMode === value ? "active" : ""} onClick={() => { setCanvasMode(value); if (value === "system") { setBusinessGranularity("block"); if (activeOverlay !== "system") setActiveOverlay(null); } setSystemSupport(null); setProjectNotice(null); setSelected(null); }}>{label}</button>)}</div></section>
       {canvasMode === "panorama" && <section className="sidebar-section granularity-section"><div className="sidebar-section-heading"><b>展示层级</b><span>节点粒度</span></div><div className="sidebar-segment compact">{[["block","板块"],["unit","单元"],["item","事项"]].map(([value,label]) => <button key={value} className={businessGranularity === value ? "active" : ""} onClick={() => setBusinessGranularity(value)}>{label}</button>)}</div></section>}
-      {(canvasMode === "panorama" || canvasMode === "system") && <section className="sidebar-section business-filter-section"><div className="sidebar-section-heading"><b>业务筛选</b><span>{businessQuery ? canvasMode === "system" ? "矩阵内定位" : `${businessMatches?.size || 0} 个节点` : "模糊匹配"}</span></div><label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索板块、单元或事项" value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} placeholder="搜索板块 / 单元 / 事项" /></label>{businessQuery && <button className="business-filter-clear" onClick={() => setBusinessSearch("")}>清空业务筛选</button>}</section>}
-      <section className="sidebar-section overlay-section"><div className="sidebar-section-heading"><b>叠加图层</b><span>单选</span></div>{[["system","系统"],["project","项目"],["diagnosis","诊断"]].map(([value,label]) => <Fragment key={value}><button className={`layer-toggle-row ${((canvasMode === "panorama") || (canvasMode === "system" && value === "system")) && activeOverlay === value ? "active" : ""}`} onClick={() => toggleOverlay(value)}><span><i />{label}</span><em /></button>{canvasMode === "panorama" && activeOverlay === value && <PanoramaLayerControls activeOverlay={activeOverlay} filters={filters} setFilters={setFilters} />}</Fragment>)}</section>
+      {(canvasMode === "panorama" || canvasMode === "system" || canvasMode === "catalog") && <section className="sidebar-section business-filter-section"><div className="sidebar-section-heading"><b>业务筛选</b><span>{businessQuery ? canvasMode === "system" ? "版图内定位" : canvasMode === "catalog" ? "看板内定位" : `${businessMatches?.size || 0} 个节点` : "模糊匹配"}</span></div><label className="sidebar-search"><span aria-hidden="true">⌕</span><input aria-label="搜索板块、单元或事项" value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} placeholder="搜索板块 / 单元 / 事项" /></label>{businessQuery && <button className="business-filter-clear" onClick={() => setBusinessSearch("")}>清空业务筛选</button>}</section>}
+      <section className="sidebar-section overlay-section"><div className="sidebar-section-heading"><b>叠加图层</b><span>单选</span></div>{[["system","系统"],["project","项目"],["diagnosis","诊断"]].map(([value,label]) => <Fragment key={value}><button className={`layer-toggle-row ${((canvasMode === "panorama") || (canvasMode === "system" && value === "system") || canvasMode === "catalog") && activeOverlay === value ? "active" : ""}`} onClick={() => toggleOverlay(value)}><span><i />{label}</span><em /></button>{(canvasMode === "panorama" || canvasMode === "catalog") && activeOverlay === value && <PanoramaLayerControls activeOverlay={activeOverlay} filters={filters} setFilters={setFilters} />}</Fragment>)}</section>
     </aside>}
     {canvasMode === "panorama" && <div className={`panorama-canvas overlay-${activeOverlay || "none"} ${overlayScanning ? "is-overlay-scanning" : ""}`} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onWheel={event => { event.preventDefault(); zoom(event.deltaY < 0 ? .06 : -.06); }}>
       <div className="panorama-grid" />
@@ -1534,6 +1636,7 @@ function UnitBusinessPanorama({ setSelected, onOpenApplication }) {
       <div className="panorama-scale">缩放 {Math.round(camera.zoom * 100)}% · 拖动画布 / 滚轮缩放</div>
     </div>}
     {canvasMode === "system" && <BusinessMatrixExplorer grain={{ block: "业务板块", unit: "业务单元", item: "业务事项" }[businessGranularity]} businessSearch={businessSearch} systemOverlayActive={activeOverlay === "system"} onGranularityChange={setBusinessGranularity} onDetailChange={setControlCollapsed} onOpenApplication={onOpenApplication} />}
+    {canvasMode === "catalog" && <BusinessCatalogBasemap businessSearch={businessSearch} onSelect={setSelected} activeOverlay={activeOverlay} activeEntities={activeEntities} overlayScanning={overlayScanning} />}
     {canvasMode === "panorama" && <div className="panorama-control-cluster"><ViewController view={{ yaw: camera.yaw, pitch: camera.pitch }} setView={setPanoramaView} /><div className="map-control-stack panorama-map-controls"><button onClick={() => zoom(.08)} title="放大" aria-label="放大">＋</button><button onClick={() => zoom(-.08)} title="缩小" aria-label="缩小">−</button><button onClick={resetView} title="复位" aria-label="复位">↺</button><button className={viewPreset === "oblique" ? "active" : ""} onClick={toggleView} title="倾斜视角" aria-label="倾斜视角">◇</button></div></div>}
   </div>;
 }
